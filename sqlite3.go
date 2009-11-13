@@ -66,6 +66,11 @@ func (h *Handle) Prepare(sql string) (s *Statement, err string) {
 	return s, "";
 }
 
+
+func (h *Statement) Finalize() {
+	C.sqlite3_finalize(h.cptr);
+}
+
 func (h *Statement) Step() (err string) {
 	C.sqlite3_step(h.cptr);
 	return "";

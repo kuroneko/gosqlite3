@@ -16,6 +16,7 @@ func main() {
 	if (err != "") {
 		println(err);
 	} else {
+		defer st.Finalize();
 		st.Step();
 	}
 }
