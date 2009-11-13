@@ -10,8 +10,13 @@ func main() {
 	dbh := new(sqlite.Handle);
 	dbh.Open("test.db");
 
-	st,_ := dbh.Prepare("CREATE TABLE foo (i INTEGER, s VARCHAR(20));");
-	st.Step();
+	st,err := dbh.Prepare("CREATE TABLE foo (i INTEGER, s VARCHAR(20));");
+	if (err != "") {
+		println(err);
+	} else {
+		st.Step();
+	}
+
 
 	dbh.Close();
 	sqlite.Shutdown();
