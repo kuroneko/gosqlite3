@@ -3,12 +3,14 @@ package sqlite
 // #include <sqlite3.h>
 import "C"
 
+
+
 type Blob struct {
 	cptr	*C.sqlite3_blob;
 };
 
 type Handle struct {
-	chdl	*C.sqlite3;
+	cptr	*C.sqlite3;
 };
 
 type Statement struct {
@@ -40,12 +42,16 @@ func (s *Statement)ColumnName(column int) (name string) {
 	return;
 }
 
+func (h *Handle) ErrMsg() (err string) {
+	return C.GoString(C.sqlite3_errmsg(h.cptr));
+}
+
 func (h *Handle) Open(filename string) (err string) {
-	rv := C.sqlite3_open(C.CString(filename), &h.chdl);
+	rv := C.sqlite3_open(C.CString(filename), &h.cptr);
 
 	if rv != 0 {
-		if nil != h.chdl {
-			return C.GoString(C.sqlite3_errmsg(h.chdl));
+		if nil != h.cptr {
+			return h.ErrMsg();
 		} else {
 			return "Couldn't allocate memory for SQLite3";
 		}
@@ -54,6 +60,22 @@ func (h *Handle) Open(filename string) (err string) {
 }
 
 func (h *Handle) Close() {
-	C.sqlite3_close(h.chdl);
-	h.chdl = nil;
+	C.sqlite3_close(h.cptr);
+	h.cptr = nil;
+}
+
+func (h *Handle) Prepare(sql string) (s *Statement, err string)
+{
+	s = new(Statement);
+		
+	rv := C.sqlite3_prepare(h.cptr, C.CString(sql), -1, &s.cptr, nil);
+	if rv != 0 {
+		return nil, h.ErrMsg();
+	}
+	return s, "";
+}
+
+func (h *Statement)Step() (err string) {
+	C.sqlite3_step(h.cptr);
+	return "";
 }
