@@ -1,9 +1,9 @@
 include $(GOROOT)/src/Make.$(GOARCH)
 
-TARG=sqlite
+TARG=sqlite3
 
 CGOFILES=\
-	sqlite.go
+	sqlite3.go
 
 CGO_LDFLAGS=-lsqlite3
 
