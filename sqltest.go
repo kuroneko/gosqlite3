@@ -46,7 +46,7 @@ func main() {
 	} else {
 		v, c, n:= "", 0, "";
 		for {
-			c,_ = st.Step();
+			c = st.Step();
 			if c==101 { break }
 			n, v = st.ColumnText(0), st.ColumnText(1);
 			fmt.Printf("data: %s, %s\n", n, v);

@@ -105,10 +105,6 @@ func (h *Statement) Finalize() int {
 }
 
 // this function must be called one or more times to evaluate a prepated statement
-func (h *Statement) Step() (errcode int, err string) {
-	rv := C.sqlite3_step(h.cptr);
-	if rv != 0 {
-		return int(rv), h.handle.ErrMsg()
-	}
-	return 0, "";
+func (h *Statement) Step() int {
+	return int(C.sqlite3_step(h.cptr));
 }
