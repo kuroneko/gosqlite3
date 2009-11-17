@@ -73,7 +73,8 @@ func (h *Handle) TotalChanges() int
 }
 
 func (h *Handle) Prepare(sql string) (s *Statement, err string) {
-	s = &Statement{handle: h};
+	// s = &Statement{handle: h};
+	s= new(Statement);
 
 	rv := C.sqlite3_prepare(h.cptr, C.CString(sql), -1, &s.cptr, nil);
 	if rv != 0 {
@@ -93,6 +94,12 @@ func (h *Statement) ColumnText(column int) string {
 	rv := C.sqlite3_column_text(h.cptr, C.int(column));
 	return C.GoString((*C.char)(unsafe.Pointer(rv)));
 }
+
+func (h *Statement) ColumnInt(column int) int {
+	rv := C.sqlite3_column_int(h.cptr, C.int(column));
+	return int(rv);
+}
+
 
 // Return the number of columns in the result set returned by the prepared statement.
 func (h *Statement) ColumnCount() int {
