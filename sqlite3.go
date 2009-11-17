@@ -2,6 +2,7 @@ package sqlite3
 
 // #include <sqlite3.h>
 import "C"
+import "unsafe"
 
 type Blob struct {
 	cptr *C.sqlite3_blob;
@@ -81,6 +82,17 @@ func (h *Handle) Prepare(sql string) (s *Statement, err string) {
 	return s, "";
 }
 
+// The sqlite3_column_type() routine returns the datatype code for the initial 
+// data type of the result column. The returned value is one of SQLITE_INTEGER, 
+// SQLITE_FLOAT, SQLITE_TEXT, SQLITE_BLOB, or SQLITE_NULL
+func (h *Statement) ColumnType(column int) int {
+	return int(C.sqlite3_column_type(h.cptr, C.int(column)));
+}
+
+func (h *Statement) ColumnText(column int) string {
+	rv := C.sqlite3_column_text(h.cptr, C.int(column));
+	return C.GoString((*C.char)(unsafe.Pointer(rv)));
+}
 
 // Return the number of columns in the result set returned by the prepared statement.
 func (h *Statement) ColumnCount() int {

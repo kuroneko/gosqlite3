@@ -38,6 +38,21 @@ func main() {
 	
 	fmt.Printf("%d changes\n", dbh.TotalChanges());
 	
-	fmt.Printf("last insert id: %d\n", dbh.LastInsertRowID())
+	fmt.Printf("last insert id: %d\n", dbh.LastInsertRowID());
+
+	st,err = dbh.Prepare("SELECT * from foo;");
+	if (err != "") {
+		println(err);
+	} else {
+		v, c, n:= "", 0, "";
+		for {
+			c,_ = st.Step();
+			if c==101 { break }
+			n, v = st.ColumnText(0), st.ColumnText(1);
+			fmt.Printf("data: %s, %s\n", n, v);
+		}
+		st.Finalize();
+	}
+	
 	
 }
