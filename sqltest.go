@@ -24,23 +24,23 @@ func main() {
 	if (err != "") {
 		println(err);
 	} else {
-		defer st.Finalize();
 		st.Step();
+		st.Finalize();
 	}
 
 	st,err = dbh.Prepare("INSERT INTO foo values (3, 'holy moly')");
 	if (err != "") {
 		println(err);
 	} else {
-		defer st.Finalize();
 		st.Step();
+		st.Finalize();
 	}
 	
 	fmt.Printf("%d changes\n", dbh.TotalChanges());
 	
 	fmt.Printf("last insert id: %d\n", dbh.LastInsertRowID());
 
-	st,err = dbh.Prepare("SELECT * from foo;");
+	st,err = dbh.Prepare("SELECT * from foo limit 5;");
 	if (err != "") {
 		println(err);
 	} else {
