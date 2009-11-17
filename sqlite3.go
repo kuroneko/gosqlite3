@@ -13,6 +13,7 @@ type Handle struct {
 
 type Statement struct {
 	cptr *C.sqlite3_stmt;
+	handle *Handle;
 }
 
 type Value struct {
@@ -56,8 +57,22 @@ func (h *Handle) Close() {
 	h.cptr = nil;
 }
 
+func (h *Handle) LastInsertRowID() int64 {
+	return int64(C.sqlite3_last_insert_rowid(h.cptr));
+}
+
+func (h *Handle) Changes() int
+{
+	return int(C.sqlite3_changes(h.cptr));
+}
+
+func (h *Handle) TotalChanges() int
+{
+	return int(C.sqlite3_total_changes(h.cptr));
+}
+
 func (h *Handle) Prepare(sql string) (s *Statement, err string) {
-	s = new(Statement);
+	s = &Statement{handle: h};
 
 	rv := C.sqlite3_prepare(h.cptr, C.CString(sql), -1, &s.cptr, nil);
 	if rv != 0 {
@@ -67,11 +82,21 @@ func (h *Handle) Prepare(sql string) (s *Statement, err string) {
 }
 
 
-func (h *Statement) Finalize() {
-	C.sqlite3_finalize(h.cptr);
+// Return the number of columns in the result set returned by the prepared statement.
+func (h *Statement) ColumnCount() int {
+	return int(C.sqlite3_column_count(h.cptr));
 }
 
-func (h *Statement) Step() (err string) {
-	C.sqlite3_step(h.cptr);
-	return "";
+// called to delete a prepared statement
+func (h *Statement) Finalize() int {
+	return int(C.sqlite3_finalize(h.cptr));
+}
+
+// this function must be called one or more times to evaluate a prepated statement
+func (h *Statement) Step() (errcode int, err string) {
+	rv := C.sqlite3_step(h.cptr);
+	if rv != 0 {
+		return int(rv), h.handle.ErrMsg()
+	}
+	return 0, "";
 }

@@ -19,4 +19,25 @@ func main() {
 		defer st.Finalize();
 		st.Step();
 	}
+	
+	st,err = dbh.Prepare("INSERT INTO foo values (2, 'this is a test')");
+	if (err != "") {
+		println(err);
+	} else {
+		defer st.Finalize();
+		st.Step();
+	}
+
+	st,err = dbh.Prepare("INSERT INTO foo values (3, 'holy moly')");
+	if (err != "") {
+		println(err);
+	} else {
+		defer st.Finalize();
+		st.Step();
+	}
+	
+	fmt.Printf("%d changes\n", dbh.TotalChanges());
+	
+	fmt.Printf("last insert id: %d\n", dbh.LastInsertRowID())
+	
 }
