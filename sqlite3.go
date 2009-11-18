@@ -1,8 +1,15 @@
 package sqlite3
 
 // #include <sqlite3.h>
+// #include "gosqlite3_wrapper.h"
 import "C"
 import "unsafe"
+
+const (
+    SQLITE_OK   = 0;
+    SQLITE_ROW  = 100;
+    SQLITE_DONE = 101;
+);
 
 type Blob struct {
 	cptr *C.sqlite3_blob;
@@ -95,6 +102,16 @@ func (h *Statement) ColumnText(column int) string {
 
 func (h *Statement) ColumnInt(column int) int {
 	rv := C.sqlite3_column_int(h.cptr, C.int(column));
+	return int(rv);
+}
+
+// bind value for statement handler
+func (h *Statement) BindInt(column int, val int) int {
+	rv := C.sqlite3_bind_int(h.cptr, C.int(column), C.int(val));
+	return int(rv);
+}
+func (h *Statement) BindText(column int, val string) int {
+	rv := C.gosqlite3_bind_text(h.cptr, C.int(column), C.CString(val), C.int(len(val)));
 	return int(rv);
 }
 

@@ -5,3 +5,5 @@ test.db
 *.o
 *.6
 _obj
+*.8
+*.db

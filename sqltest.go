@@ -12,7 +12,14 @@ func main() {
 	dbh.Open("test.db");
 	defer dbh.Close();
 
-	st,err := dbh.Prepare("CREATE TABLE foo (i INTEGER, s VARCHAR(20));");
+	st,err := dbh.Prepare("DROP TABLE IF EXISTS foo;");
+    if err != "" {
+        println(err);
+    }
+    st.Step();
+    st.Finalize();
+
+	st,err = dbh.Prepare("CREATE TABLE foo (i INTEGER, s VARCHAR(20));");
 	if (err != "") {
 		println(err);
 	} else {
@@ -28,10 +35,12 @@ func main() {
 		st.Finalize();
 	}
 
-	st,err = dbh.Prepare("INSERT INTO foo values (3, 'holy moly')");
+	st,err = dbh.Prepare("INSERT INTO foo values (?, ?)");
 	if (err != "") {
 		println(err);
 	} else {
+        st.BindInt(1, 3);
+        st.BindText(2, "holy moly");
 		st.Step();
 		st.Finalize();
 	}
@@ -45,12 +54,21 @@ func main() {
 		println(err);
 	} else {
 		v, c, n:= "", 0, "";
-		for {
-			c = st.Step();
-			if c==101 { break }
-			n, v = st.ColumnText(0), st.ColumnText(1);
-			fmt.Printf("data: %s, %s\n", n, v);
-		}
+        func () {
+            for {
+                c = st.Step();
+                switch {
+                case c==sqlite3.SQLITE_DONE:
+                    return;
+                case c==sqlite3.SQLITE_ROW:
+                    n, v = st.ColumnText(0), st.ColumnText(1);
+                    fmt.Printf("data: %s, %s\n", n, v);
+                default:
+                    println(dbh.ErrMsg());
+                    return;
+                };
+            }
+        }();
 		st.Finalize();
 	}
 	
