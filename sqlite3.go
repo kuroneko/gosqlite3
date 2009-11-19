@@ -14,7 +14,6 @@ type Handle struct {
 
 type Statement struct {
 	cptr *C.sqlite3_stmt;
-	handle *Handle;
 }
 
 type Value struct {
@@ -73,8 +72,7 @@ func (h *Handle) TotalChanges() int
 }
 
 func (h *Handle) Prepare(sql string) (s *Statement, err string) {
-	// s = &Statement{handle: h};
-	s= new(Statement);
+	s = new(Statement);
 
 	rv := C.sqlite3_prepare(h.cptr, C.CString(sql), -1, &s.cptr, nil);
 	if rv != 0 {
