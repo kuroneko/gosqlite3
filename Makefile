@@ -5,14 +5,7 @@ TARG=sqlite3
 CGOFILES=\
 	sqlite3.go
 
-CGO_LDFLAGS=gosqlite3_wrapper.o -lsqlite3
-
-%: gosqlite3_wrapper.o install %.go
-	$(GC) $*.go
-	$(LD) -o $* $*.$O
-
-gosqlite3_wrapper.o: gosqlite3_wrapper.c
-	gcc -fPIC -O2 -o gosqlite3_wrapper.o -c gosqlite3_wrapper.c
+CGO_LDFLAGS=-lsqlite3
 
 include $(GOROOT)/src/Make.pkg
 
