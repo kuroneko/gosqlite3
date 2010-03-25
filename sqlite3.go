@@ -70,13 +70,11 @@ func (h *Handle) LastInsertRowID() int64 {
 	return int64(C.sqlite3_last_insert_rowid(h.cptr));
 }
 
-func (h *Handle) Changes() int
-{
+func (h *Handle) Changes() int {
 	return int(C.sqlite3_changes(h.cptr));
 }
 
-func (h *Handle) TotalChanges() int
-{
+func (h *Handle) TotalChanges() int {
 	return int(C.sqlite3_total_changes(h.cptr));
 }
 
