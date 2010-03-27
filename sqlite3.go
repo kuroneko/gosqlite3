@@ -107,6 +107,15 @@ func (h *Statement) ColumnInt(column int) int {
 	return int(rv);
 }
 
+func (h *Statement) ColumnInt64(column int) int64 {
+	rv := C.sqlite3_column_int64(h.cptr, C.int(column))
+	return int64(C.sqlite3_int64(rv))
+}
+
+func (h *Statement) ColumnDouble(column int) float64 {
+	rv := C.sqlite3_column_double(h.cptr, C.int(column))
+	return float64(rv)
+}
 // bind value for statement handler
 func (h *Statement) BindInt(column int, val int) int {
 	rv := C.sqlite3_bind_int(h.cptr, C.int(column), C.int(val));
@@ -117,6 +126,13 @@ func (h *Statement) BindText(column int, val string) int {
 	return int(rv);
 }
 
+func (h *Statement) BindInt64(column int, val int64) int {
+	return int( C.sqlite3_bind_int64(h.cptr, C.int(column), C.sqlite3_int64(val)) )
+}
+func (h *Statement) BindDouble(column int, val float64) int {
+	rv := C.sqlite3_bind_double(h.cptr, C.int(column), C.double(val))
+	return int(rv)
+}
 
 // Return the number of columns in the result set returned by the prepared statement.
 func (h *Statement) ColumnCount() int {
