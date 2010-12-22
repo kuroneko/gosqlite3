@@ -100,25 +100,23 @@ func Open(filename string, flags... int) (db *Database, e os.Error) {
 			e = MISUSE
 		}
 	}()
-	db = new(Database)
-	db.Filename = filename
-	switch len(flags) {
-	case 0:		db.Flags = C.SQLITE_OPEN_FULLMUTEX | C.SQLITE_OPEN_READWRITE | C.SQLITE_OPEN_CREATE
-	default:	for _, v := range flags { db.Flags = db.Flags | C.int(v) }
+	db = &Database{ Filename: filename }
+	if len(flags) == 0 {
+		e = db.Open(C.SQLITE_OPEN_FULLMUTEX, C.SQLITE_OPEN_READWRITE, C.SQLITE_OPEN_CREATE)
+	} else {
+		e = db.Open(flags...)
 	}
-	e = db.Open()
 	return
 }
 
-func (db *Database) Open() (e os.Error) {
+func (db *Database) Open(flags... int) (e os.Error) {
 	if C.sqlite3_threadsafe() == 0 {
 		panic("sqlite library is not thread-safe")
-	} else if rv := C.sqlite3_open_v2(C.CString(db.Filename), &db.handle, db.Flags, nil); rv != 0 {
-		e = Errno(rv)
-	} else if &db.handle == nil {
-		panic("sqlite failed to return a database")
-	} else {
-		e = OK
+	}
+	db.Flags = 0
+	for _, v := range flags { db.Flags = db.Flags | C.int(v) }
+	if e = Errno(C.sqlite3_open_v2(C.CString(db.Filename), &db.handle, db.Flags, nil)); e == OK && db.handle == nil {
+		e = CANTOPEN
 	}
 	return
 }

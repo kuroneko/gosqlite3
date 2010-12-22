@@ -26,7 +26,6 @@ func (s *Statement) ColumnType(column int) int {
 }
 
 func (s *Statement) Column(column int) (value interface{}) {
-	//	Generalise the above so only one function is needed
 	switch s.ColumnType(column) {
 	case SQLITE_INTEGER:
 		value = int64(C.sqlite3_int64(C.sqlite3_column_int64(s.cptr, C.int(column))))
