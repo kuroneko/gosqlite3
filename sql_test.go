@@ -29,19 +29,17 @@ func TestGeneral(t *testing.T) {
 	}
 }
 
-type params [][]interface{}
-type query struct {
+var queries = []struct {
 	sql     string
-	params  params
+	params  [][]interface{}
 	verbose bool
-}
-
-var queries = []query{
+}{
 	{"DROP TABLE IF EXISTS foo;", nil, false},
 	{"CREATE TABLE foo (i INTEGER, s VARCHAR(20));", nil, false},
 	{"INSERT INTO foo values (2, 'this is a test')", nil, false},
-	{"INSERT INTO foo values (?, ?)", params{{3}, {"holy moly"}}, true},
-	{"INSERT INTO foo values (?, ?)", params{{4, "holy moly guacamole"}}, true}}
+	{"INSERT INTO foo values (?, ?)", [][]interface{}{{3}, {"holy moly"}}, true},
+	{"INSERT INTO foo values (?, ?)", [][]interface{}{{4, "holy moly guacamole"}}, true},
+}
 
 func TestSession(t *testing.T) {
 	sqlite3.Session(":memory:", func(db *sqlite3.Database) {
