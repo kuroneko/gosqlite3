@@ -1,19 +1,23 @@
 package sql_test
 
+import "fmt"
 import "testing"
 import "sqlite3"
 
 func TestGeneral(t *testing.T) {
+	filename := ":memory:"
+
 	sqlite3.Initialize()
 	defer sqlite3.Shutdown()
 	t.Logf("Sqlite3 Version: %v\n", sqlite3.LibVersion())
 	
-	db, e := sqlite3.Open(":memory:")
+	db, e := sqlite3.Open(filename)
 	if e != sqlite3.OK {
-		t.Fatalf("Open :memory:: %v", e)
+		t.Fatalf("Open %v: %v", filename, e)
 	}
 	defer db.Close()
 	t.Logf("Database opened: %v [flags: %v]", db.Filename, int(db.Flags))
+	t.Logf(fmt.Sprintf("Returning status: %v", e))
 
 	st, e := db.Prepare("CREATE TABLE foo (i INTEGER, s VARCHAR(20));")
 	if e != sqlite3.OK {
@@ -30,41 +34,28 @@ func TestGeneral(t *testing.T) {
 	st.Step()
 }
 
-var queries = []struct {
-	sql     string
-	params  [][]interface{}
-	verbose bool
-}{
-	{"DROP TABLE IF EXISTS foo;", nil, false},
-	{"CREATE TABLE foo (i INTEGER, s VARCHAR(20));", nil, false},
-	{"INSERT INTO foo values (2, 'this is a test')", nil, false},
-	{"INSERT INTO foo values (?, ?)", [][]interface{}{{3}, {"holy moly"}}, true},
-	{"INSERT INTO foo values (?, ?)", [][]interface{}{{4, "holy moly guacamole"}}, true},
+func runQuery(t *testing.T, db *sqlite3.Database, sql string, params... interface{}) {
+	if st, e := db.Prepare(sql); e == sqlite3.OK {
+		t.Logf("successfully compiled %v\n", st.Source())
+		st.Bind(1, params...)
+		st.Step()
+		st.Finalize()
+	} else {
+		t.Errorf("Error: failed to compile %v", st.Source())
+	}
+	t.Logf("last insert id: %v\n", db.LastInsertRowID())
+	t.Logf("%v changes\n", db.TotalChanges())
 }
 
 func TestSession(t *testing.T) {
 	sqlite3.Session(":memory:", func(db *sqlite3.Database) {
 		t.Logf("Sqlite3 Version: %v\n", sqlite3.LibVersion())
 
-		for q, query := range queries {
-			if st, e := db.Prepare(query.sql); e == sqlite3.OK {
-				if query.params != nil {
-					for p, params := range query.params {
-						st.Bind(p+1, params)
-					}
-				}
-				st.Step()
-				st.Finalize()
-			} else {
-				t.Errorf("queries[%v] \"%v\" failed to compile:\n\t%v",
-					q, query.sql, e)
-			}
-
-			if query.verbose {
-				t.Logf("%v changes\n", db.TotalChanges())
-				t.Logf("last insert id: %v\n", db.LastInsertRowID())
-			}
-		}
+		runQuery(t, db, "DROP TABLE IF EXISTS foo;")
+		runQuery(t, db, "CREATE TABLE foo (number INTEGER, text VARCHAR(20));")
+		runQuery(t, db, "INSERT INTO foo values (1, 'this is a test')")
+		runQuery(t, db, "INSERT INTO foo values (?, ?)", 2, "holy moly")
+		runQuery(t, db, "INSERT INTO foo values (?, ?)", []interface{}{ 3, "holy moly guacomole" })
 
 		if st, e := db.Prepare("SELECT * from foo limit 5;"); e == sqlite3.OK {
 			for i := 0; ; i++ {
@@ -72,7 +63,7 @@ func TestSession(t *testing.T) {
 				case sqlite3.DONE:
 					return
 				case sqlite3.ROW:
-					t.Logf("data: %v, %v\n", st.Column(0), st.Column(1))
+					t.Logf("%v: %v, %v: %v\n", st.ColumnName(0), st.Column(0), st.ColumnName(1), st.Column(1))
 				default:
 					t.Errorf("SELECT * from foo limit 5; failed on step %v: %v", i, db.Error())
 					return

@@ -8,6 +8,7 @@ package sqlite3
 //     return sqlite3_bind_text(s, p, q, n, SQLITE_TRANSIENT);
 // }
 import "C"
+import "reflect"
 import "unsafe"
 
 type Statement struct {
@@ -45,8 +46,9 @@ func (s *Statement) Column(column int) (value interface{}) {
 }
 
 func (s *Statement) Bind(start_column int, values... interface{}) (rv Errno, index int) {
+	column := 0
 	for i, val := range values {
-		column := start_column + i
+		column++
 		switch val := val.(type) {
 		case nil:
 			rv = Errno(C.sqlite3_bind_null(s.cptr, C.int(column)))
@@ -59,15 +61,29 @@ func (s *Statement) Bind(start_column int, values... interface{}) (rv Errno, ind
 		case float64:
 			rv = Errno(C.sqlite3_bind_double(s.cptr, C.int(column), C.double(val)))
 		default:
-			//	save the binary form of the value as a blob
-			//	rv = Errno(C.gosqlite3_bind_blob(s.cptr, C.int(column), unsafe.Pointer(&val), C.int(unsafe.Sizeof(val))))
-			rv = MISMATCH
+			switch val := reflect.NewValue(val).(type) {
+			case *reflect.SliceValue:
+				values := make([]interface{}, 0)
+				for j := 0; j < val.Len(); j++ {
+					values = append(values, val.Elem(j).Interface())
+				}
+				rv, _ = s.Bind(column, values...)
+			default:
+				//	save the binary form of the value as a blob
+				//	rv = Errno(C.gosqlite3_bind_blob(s.cptr, C.int(column), unsafe.Pointer(&val), C.int(unsafe.Sizeof(val))))
+				rv = MISMATCH
+			}
 		}
 		if rv != OK {
+			index = i
 			break
 		}
 	}
 	return
+}
+
+func (s *Statement) Source() string {
+	return C.GoString(C.sqlite3_sql(s.cptr))
 }
 
 func (s *Statement) Parameters() int {
