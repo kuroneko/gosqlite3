@@ -7,26 +7,27 @@ func TestGeneral(t *testing.T) {
 	sqlite3.Initialize()
 	defer sqlite3.Shutdown()
 	t.Logf("Sqlite3 Version: %v\n", sqlite3.LibVersion())
-
-	if db, e := sqlite3.Open(":memory:"); e != sqlite3.OK {
+	
+	db, e := sqlite3.Open(":memory:")
+	if e != sqlite3.OK {
 		t.Fatalf("Open :memory:: %v", e)
-	} else {
-		defer db.Close()
-
-		t.Logf("Database opened: %v [flags: %v]", db.Filename, int(db.Flags))
-		if st, e := db.Prepare("CREATE TABLE foo (i INTEGER, s VARCHAR(20));"); e != sqlite3.OK {
-			t.Errorf("Create Table: %v", e)
-		} else {
-			defer st.Finalize()
-			st.Step()
-			if st, e := db.Prepare("DROP TABLE foo;"); e != sqlite3.OK {
-				t.Errorf("Drop Table: %v", e)
-			} else {
-				defer st.Finalize()
-				st.Step()
-			}
-		}
 	}
+	defer db.Close()
+	t.Logf("Database opened: %v [flags: %v]", db.Filename, int(db.Flags))
+
+	st, e := db.Prepare("CREATE TABLE foo (i INTEGER, s VARCHAR(20));")
+	if e != sqlite3.OK {
+		t.Fatalf("Create Table: %v", e)
+	}
+	defer st.Finalize()
+	st.Step()
+	
+	st, e = db.Prepare("DROP TABLE foo;")
+	if e != sqlite3.OK {
+		t.Fatalf("Drop Table: %v", e)
+	}
+	defer st.Finalize()
+	st.Step()
 }
 
 var queries = []struct {
