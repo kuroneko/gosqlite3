@@ -9,7 +9,7 @@ func TestGeneral(t *testing.T) {
 	t.Logf("Sqlite3 Version: %v\n", sqlite3.LibVersion())
 
 	if db, e := sqlite3.Open(":memory:"); e != sqlite3.OK {
-		t.Errorf("Open :memory:: %v", e)
+		t.Fatalf("Open :memory:: %v", e)
 	} else {
 		defer db.Close()
 
@@ -29,52 +29,43 @@ func TestGeneral(t *testing.T) {
 	}
 }
 
+type params [][]interface{}
+type query struct {
+	sql     string
+	params  params
+	verbose bool
+}
+
+var queries = []query{
+	{"DROP TABLE IF EXISTS foo;", nil, false},
+	{"CREATE TABLE foo (i INTEGER, s VARCHAR(20));", nil, false},
+	{"INSERT INTO foo values (2, 'this is a test')", nil, false},
+	{"INSERT INTO foo values (?, ?)", params{{3}, {"holy moly"}}, true},
+	{"INSERT INTO foo values (?, ?)", params{{4, "holy moly guacamole"}}, true}}
+
 func TestSession(t *testing.T) {
 	sqlite3.Session(":memory:", func(db *sqlite3.Database) {
 		t.Logf("Sqlite3 Version: %v\n", sqlite3.LibVersion())
-		if st, e := db.Prepare("DROP TABLE IF EXISTS foo;"); e == sqlite3.OK {
-			st.Step()
-			st.Finalize()
-		} else {
-			t.Errorf("DROP TABLE IF EXISTS foo; failed to compile: %v", e)
+
+		for q, query := range queries {
+			if st, e := db.Prepare(query.sql); e == sqlite3.OK {
+				if query.params != nil {
+					for p, params := range query.params {
+						st.Bind(p+1, params)
+					}
+				}
+				st.Step()
+				st.Finalize()
+			} else {
+				t.Errorf("queries[%v] \"%v\" failed to compile:\n\t%v",
+					q, query.sql, e)
+			}
+
+			if query.verbose {
+				t.Logf("%v changes\n", db.TotalChanges())
+				t.Logf("last insert id: %v\n", db.LastInsertRowID())
+			}
 		}
-
-		if st, e := db.Prepare("CREATE TABLE foo (i INTEGER, s VARCHAR(20));"); e == sqlite3.OK {
-			st.Step()
-			st.Finalize()
-		} else {
-			t.Errorf("CREATE TABLE foo (i INTEGER, s VARCHAR(20)); failed to compile: %v", e)
-		}
-
-		if st, e := db.Prepare("INSERT INTO foo values (2, 'this is a test')"); e == sqlite3.OK {
-			st.Step()
-			st.Finalize()
-		} else {
-			t.Errorf("INSERT INTO foo values (2, 'this is a test') failed to compile: %v", e)
-		}
-
-		if st, e := db.Prepare("INSERT INTO foo values (?, ?)"); e == sqlite3.OK {
-			st.Bind(1, 3)
-			st.Bind(2, "holy moly")
-			st.Step()
-			st.Finalize()
-		} else {
-			t.Errorf("INSERT INTO foo values (3, \"holy moly\") failed to compile: %v", e)
-		}
-
-		t.Logf("%v changes\n", db.TotalChanges())
-		t.Logf("last insert id: %v\n", db.LastInsertRowID())
-
-		if st, e := db.Prepare("INSERT INTO foo values (?, ?)"); e == sqlite3.OK {
-			st.Bind(1, 4, "holy moly guacamole")
-			st.Step()
-			st.Finalize()
-		} else {
-			t.Errorf("INSERT INTO foo values (4, \"holy moly guacamole\") failed to compile: %v", e)
-		}
-
-		t.Logf("%v changes\n", db.TotalChanges())
-		t.Logf("last insert id: %v\n", db.LastInsertRowID())
 
 		if st, e := db.Prepare("SELECT * from foo limit 5;"); e == sqlite3.OK {
 			for i := 0; ; i++ {
