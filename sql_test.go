@@ -8,8 +8,8 @@ func TestGeneral(t *testing.T) {
 	defer sqlite3.Shutdown()
 	t.Logf("Sqlite3 Version: %v\n", sqlite3.LibVersion())
 
-	if db, e := sqlite3.Open("test.db"); e != sqlite3.OK {
-		t.Errorf("Open test.db: %v", e)
+	if db, e := sqlite3.Open(":memory:"); e != sqlite3.OK {
+		t.Errorf("Open :memory:: %v", e)
 	} else {
 		defer db.Close()
 
@@ -30,7 +30,7 @@ func TestGeneral(t *testing.T) {
 }
 
 func TestSession(t *testing.T) {
-	sqlite3.Session("test.db", func(db *sqlite3.Database) {
+	sqlite3.Session(":memory:", func(db *sqlite3.Database) {
 		t.Logf("Sqlite3 Version: %v\n", sqlite3.LibVersion())
 		if st, e := db.Prepare("DROP TABLE IF EXISTS foo;"); e == sqlite3.OK {
 			st.Step()
