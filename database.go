@@ -18,7 +18,7 @@ type Errno int
 
 func (e Errno) String() (err string) {
 	if err = errText[e]; err == "" {
-		err = fmt.Sprintf("errno %d", e)
+		err = fmt.Sprintf("errno %v", int(e))
 	}
 	return 
 }
