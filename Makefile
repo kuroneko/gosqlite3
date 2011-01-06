@@ -5,6 +5,7 @@ TARG=sqlite3
 CGOFILES=\
 	sqlite3.go\
 	database.go\
+	column.go\
 	statement.go
 
 ifeq ($(GOOS),darwin)
