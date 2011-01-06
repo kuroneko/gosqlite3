@@ -20,6 +20,15 @@ func Session(filename string, f func(db *Database)) {
 	}
 }
 
+func TransientSession(f func(db *Database)) {
+	Initialize()
+	defer Shutdown()
+	if db := TransientDatabase(); db.Open() == OK {
+		defer db.Close()
+		f(db)
+	}
+}
+
 func LibVersion() string {
 	return C.GoString(C.sqlite3_libversion())
 }

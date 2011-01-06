@@ -53,6 +53,7 @@ const(
 	NOTDB
 	ROW			= Errno(100)
 	DONE		= Errno(101)
+	ENCODER		= Errno(1000)
 )
 
 var errText = map[Errno]string {
@@ -84,12 +85,17 @@ var errText = map[Errno]string {
 	NOTDB:		"File opened that is not a database file",
 	ROW:		"sqlite3_step() has another row ready",
 	DONE:		"sqlite3_step() has finished executing",
+	ENCODER:	"blob encoding failed",
 }
 
 type Database struct {
 	handle		*C.sqlite3
 	Filename	string
 	Flags		C.int
+}
+
+func TransientDatabase() (db *Database) {
+	return &Database{ Filename: ":memory:" }	
 }
 
 func Open(filename string, flags... int) (db *Database, e os.Error) {
@@ -113,10 +119,14 @@ func (db *Database) Open(flags... int) (e os.Error) {
 	if C.sqlite3_threadsafe() == 0 {
 		panic("sqlite library is not thread-safe")
 	}
-	db.Flags = 0
-	for _, v := range flags { db.Flags = db.Flags | C.int(v) }
-	if e = Errno(C.sqlite3_open_v2(C.CString(db.Filename), &db.handle, db.Flags, nil)); e == OK && db.handle == nil {
+	if db.handle != nil {
 		e = CANTOPEN
+	} else {
+		db.Flags = 0
+		for _, v := range flags { db.Flags = db.Flags | C.int(v) }
+		if e = Errno(C.sqlite3_open_v2(C.CString(db.Filename), &db.handle, db.Flags, nil)); e == OK && db.handle == nil {
+			e = CANTOPEN
+		}
 	}
 	return
 }
