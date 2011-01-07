@@ -15,6 +15,20 @@ import "unsafe"
 
 
 type Column int
+func (c Column) bind_blob(s *Statement, v []byte) (e Errno) {
+	return Errno(C.gosqlite3_bind_blob(s.cptr, C.int(c), unsafe.Pointer(C.CString(string(v))), C.int(len(v))))
+}
+
+func (c Column) make_buffer(s *Statement, addr interface{}) (buffer string) {
+	switch addr := addr.(type) {
+	case *C.uchar:
+		buffer = C.GoStringN((*C.char)(unsafe.Pointer(addr)), C.int(c.ByteCount(s)))
+	case unsafe.Pointer:
+		buffer = C.GoStringN((*C.char)(addr), C.int(c.ByteCount(s)))
+	}
+	return 
+}
+
 func (c Column) Name(s *Statement) string {
 	return C.GoString(C.sqlite3_column_name(s.cptr, C.int(c)))
 }
@@ -27,20 +41,6 @@ func (c Column) ByteCount(s *Statement) int {
 	return int(C.sqlite3_column_bytes(s.cptr, C.int(c)))
 }
 
-func (c Column) bind_blob(s *Statement, v string) (e Errno) {
-	return Errno(C.gosqlite3_bind_blob(s.cptr, C.int(c), unsafe.Pointer(C.CString(v)), C.int(len(v))))
-}
-
-func (c Column) goBuffer(s *Statement, addr interface{}) (buffer string) {
-	switch addr := addr.(type) {
-	case *C.uchar:
-		buffer = C.GoStringN((*C.char)(unsafe.Pointer(addr)), C.int(c.ByteCount(s)))
-	case unsafe.Pointer:
-		buffer = C.GoStringN((*C.char)(addr), C.int(c.ByteCount(s)))
-	}
-	return 
-}
-
 func (c Column) Value(s *Statement) (value interface{}) {
 	switch c.Type(s) {
 	case SQLITE_INTEGER:
@@ -48,9 +48,9 @@ func (c Column) Value(s *Statement) (value interface{}) {
 	case SQLITE_FLOAT:
 		value = float64(C.sqlite3_column_double(s.cptr, C.int(c)))
 	case SQLITE3_TEXT:
-		value = c.goBuffer(s, C.sqlite3_column_text(s.cptr, C.int(c)))
+		value = c.make_buffer(s, C.sqlite3_column_text(s.cptr, C.int(c)))
 	case SQLITE_BLOB:
-		buffer := c.goBuffer(s, C.sqlite3_column_blob(s.cptr, C.int(c)))
+		buffer := c.make_buffer(s, C.sqlite3_column_blob(s.cptr, C.int(c)))
 		value = gob.NewDecoder(bytes.NewBuffer([]byte(buffer)))
 	case SQLITE_NULL:
 		value = nil
@@ -76,7 +76,6 @@ func (c Column) Bind(s *Statement, value interface{}) (e Errno) {
 		e = Errno(C.sqlite3_bind_double(s.cptr, C.int(c), C.double(v)))
 	default:
 		//	save the binary form of the value as a blob
-		//	this should probably use the gob package
 		buffer := new(bytes.Buffer)
 		encoder := gob.NewEncoder(buffer)
 		if err := encoder.Encode(value); err != nil {
