@@ -38,18 +38,26 @@ func (s *Statement) SQLSource() string {
 	return C.GoString(C.sqlite3_sql(s.cptr))
 }
 
-func (s *Statement) Parameters() int {
-	return int(C.sqlite3_bind_parameter_count(s.cptr))
+func (s *Statement) Parameters() Errno {
+	return Errno(C.sqlite3_bind_parameter_count(s.cptr))
 }
 
-func (s *Statement) Columns() int {
-	return int(C.sqlite3_column_count(s.cptr))
+func (s *Statement) Columns() Errno {
+	return Errno(C.sqlite3_column_count(s.cptr))
 }
 
-func (s *Statement) Finalize() int {
-	return int(C.sqlite3_finalize(s.cptr))
+func (s *Statement) Finalize() Errno {
+	return Errno(C.sqlite3_finalize(s.cptr))
 }
 
 func (s *Statement) Step() Errno {
 	return Errno(C.sqlite3_step(s.cptr))
+}
+
+func (s *Statement) Reset() Errno {
+	return Errno(C.sqlite3_reset(s.cptr))
+}
+
+func (s *Statement) ClearBindings() Errno {
+	return Errno(C.sqlite3_clear_bindings(s.cptr))
 }

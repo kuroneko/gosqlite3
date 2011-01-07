@@ -15,7 +15,7 @@ import "unsafe"
 
 
 type Column int
-func (c Column) bind_blob(s *Statement, v []byte) (e Errno) {
+func (c Column) bind_blob(s *Statement, v []byte) Errno {
 	return Errno(C.gosqlite3_bind_blob(s.cptr, C.int(c), unsafe.Pointer(C.CString(string(v))), C.int(len(v))))
 }
 
@@ -75,7 +75,6 @@ func (c Column) Bind(s *Statement, value interface{}) (e Errno) {
 	case float64:
 		e = Errno(C.sqlite3_bind_double(s.cptr, C.int(c), C.double(v)))
 	default:
-		//	save the binary form of the value as a blob
 		buffer := new(bytes.Buffer)
 		encoder := gob.NewEncoder(buffer)
 		if err := encoder.Encode(value); err != nil {
@@ -84,7 +83,6 @@ func (c Column) Bind(s *Statement, value interface{}) (e Errno) {
 			rawbuffer := string(buffer.Bytes())
 			e = Errno(C.gosqlite3_bind_blob(s.cptr, C.int(c), unsafe.Pointer(C.CString(rawbuffer)), C.int(len(rawbuffer))))
 		}
-//		e = MISMATCH
 	}
 	return
 }
