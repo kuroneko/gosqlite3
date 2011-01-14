@@ -1,189 +1,116 @@
 package sqlite3
 
 import "bytes"
-import "fmt"
 import "gob"
 import "testing"
 
-func TestGeneral(t *testing.T) {
-	filename := ":memory:"
 
+func TestGeneral(t *testing.T) {
 	Initialize()
 	defer Shutdown()
 	t.Logf("Sqlite3 Version: %v\n", LibVersion())
-	
+
+	filename := ":memory:"
 	db, e := Open(filename)
-	if e != OK {
-		t.Fatalf("Open %v: %v", filename, e)
-	}
+	fatalOnError(t, e, "opening %v", filename)
+
 	defer db.Close()
 	t.Logf("Database opened: %v [flags: %v]", db.Filename, int(db.Flags))
-	t.Logf(fmt.Sprintf("Returning status: %v", e))
-
-	st, e := db.Prepare("CREATE TABLE foo (i INTEGER, s VARCHAR(20));")
-	if e != OK {
-		t.Fatalf("Create Table: %v", e)
-	}
-	defer st.Finalize()
-	st.Step()
-	
-	st, e = db.Prepare("DROP TABLE foo;")
-	if e != OK {
-		t.Fatalf("Drop Table: %v", e)
-	}
-	defer st.Finalize()
-	st.Step()
+	t.Logf("Returning status: %v", e)
 }
 
-func runQuery(t *testing.T, db *Database, sql string, params... interface{}) {
-	if st, e := db.Prepare(sql); e == OK {
-		if e, i := st.Bind(1, params...); e == OK {
-			st.Step()
-		} else {
-			t.Errorf("Error: unable to bind column %v resulting in error %v", i , e)
-		}
-		st.Finalize()
-	} else {
-		t.Errorf("Error: failed to compile %v", st.SQLSource())
-	}
-}
 
 func TestSession(t *testing.T) {
-	Session(":memory:", func(db *Database) {
-		runQuery(t, db, "DROP TABLE IF EXISTS foo;")
-		runQuery(t, db, "CREATE TABLE foo (number INTEGER, text VARCHAR(20));")
-		runQuery(t, db, "INSERT INTO foo values (1, 'this is a test')")
-		runQuery(t, db, "INSERT INTO foo values (?, ?)", 2, "holy moly")
-
-		if st, e := db.Prepare("SELECT * from foo limit 5;"); e == OK {
-			for i := 0; ; i++ {
-				switch st.Step() {
-				case DONE:
-					return
-				case ROW:
-					text := st.Column(1)
-					switch text := text.(type) {
-					case *gob.Decoder:
-						blob := TwoItems{}
-						text.Decode(blob)
-						t.Logf("%v: %v, %v: %v\n", Column(0).Name(st), Column(0).Value(st), st.ColumnName(1), blob)
-					default:
-						t.Logf("%v: %v, %v: %v\n", Column(0).Name(st), Column(0).Value(st), st.ColumnName(1), st.Column(1))
-					}
-				default:
-					t.Errorf("SELECT * from foo limit 5; failed on step %v: %v", i, db.Error())
-					return
-				}
-			}
-			st.Finalize()
-		} else {
-			t.Errorf("SELECT * from foo limit 5; failed to return results %v", db.Error())
-		}
+	Session("test.db", func(db *Database) {
+		FOO.Drop(db)
+		FOO.Create(db)
+		db.runQuery(t, "INSERT INTO foo values (1, 'this is a test')")
+		db.runQuery(t, "INSERT INTO foo values (?, ?)", 2, "holy moly")
+		db.stepThroughRows(t, FOO)
 	})
 }
+
 
 func TestTransientSession(t *testing.T) {
 	TransientSession(func(db *Database) {
-		runQuery(t, db, "DROP TABLE IF EXISTS foo;")
-		runQuery(t, db, "CREATE TABLE foo (number INTEGER, text VARCHAR(20));")
-		runQuery(t, db, "INSERT INTO foo values (1, 'this is a test')")
-		runQuery(t, db, "INSERT INTO foo values (?, ?)", 2, "holy moly")
-
-		if st, e := db.Prepare("SELECT * from foo limit 5;"); e == OK {
-			for i := 0; ; i++ {
-				switch st.Step() {
-				case DONE:
-					return
-				case ROW:
-					text := st.Column(1)
-					switch text := text.(type) {
-					case *gob.Decoder:
-						blob := TwoItems{}
-						text.Decode(blob)
-						t.Logf("%v: %v, %v: %v\n", Column(0).Name(st), Column(0).Value(st), st.ColumnName(1), blob)
-					default:
-						t.Logf("%v: %v, %v: %v\n", Column(0).Name(st), Column(0).Value(st), st.ColumnName(1), st.Column(1))
-					}
-				default:
-					t.Errorf("SELECT * from foo limit 5; failed on step %v: %v", i, db.Error())
-					return
-				}
-			}
-			st.Finalize()
-		} else {
-			t.Errorf("SELECT * from foo limit 5; failed to return results %v", db.Error())
-		}
-	})
-}
-
-type TwoItems struct {
-	Number		string
-	Text		string
-}
-func (t *TwoItems) String() string {
-	return "[" + t.Number + " : " + t.Text + "]"
-}
-
-func TestBlobEncoding(t *testing.T) {
-	Session("test.db", func(db *Database) {
-		runQuery(t, db, "DROP TABLE IF EXISTS foo;")
-		runQuery(t, db, "CREATE TABLE foo (number INTEGER, value BLOB);")
-
-		if st, e := db.Prepare("INSERT INTO foo values (3, ?)"); e == OK {
-			buffer := new(bytes.Buffer)
-			encoder := gob.NewEncoder(buffer)
-			if err := encoder.Encode(TwoItems{ "holy moly", "guacomole" }); err != nil {
-				t.Errorf("Encoding failed: buffer = %v", )
-			} else {
-				t.Logf("Encoded data: %v", buffer.Bytes())
-				e = Column(1).bind_blob(st, buffer.Bytes())
-			}
-			if e == OK {
-				st.Step()
-			} else {
-				t.Errorf("Error: unable to bind column 1 resulting in error %v", e)
-			}
-			st.Finalize()
-		} else {
-			t.Errorf("Error: failed to compile %v", st.SQLSource())
-		}
+		FOO.Drop(db)
+		FOO.Create(db)
+		db.runQuery(t, "INSERT INTO foo values (1, 'this is a test')")
+		db.runQuery(t, "INSERT INTO foo values (?, ?)", 2, "holy moly")
+		db.stepThroughRows(t, FOO)
 	})
 }
 
 func TestBlob(t *testing.T) {
 	Session("test.db", func(db *Database) {
-		runQuery(t, db, "DROP TABLE IF EXISTS foo;")
-		runQuery(t, db, "CREATE TABLE foo (number INTEGER, value BLOB);")
-		runQuery(t, db, "INSERT INTO foo values (1, 'this is a test')")
-		runQuery(t, db, "INSERT INTO foo values (?, ?)", 2, "holy moly")
-		runQuery(t, db, "INSERT INTO foo values (?, ?)", 3, TwoItems{ "holy moly", "guacomole" })
+		BAR.Drop(db)
+		BAR.Create(db)
 
-		if st, e := db.Prepare("SELECT * from foo limit 5;"); e == OK {
-			for i := 0; ; i++ {
-				switch st.Step() {
-				case DONE:
-					return
-				case ROW:
-					text := st.Column(1)
-					switch text := text.(type) {
-					case *gob.Decoder:
-						blob := new(TwoItems)
-						if e = text.Decode(blob); e == nil {
-							t.Logf("BLOB => %v: %v, %v: %v\n", Column(0).Name(st), Column(0).Value(st), st.ColumnName(1), blob)
-						} else {
-							t.Logf("BLOB => %v: %v, %v: (decoding failed: %v)\n", Column(0).Name(st), Column(0).Value(st), st.ColumnName(1), blob)
-						}
-					default:
-						t.Logf("TEXT => %v: %v, %v: %v\n", Column(0).Name(st), Column(0).Value(st), st.ColumnName(1), st.Column(1))
-					}
-				default:
-					t.Errorf("SELECT * from foo limit 5; failed on step %v: %v", i, db.Error())
-					return
-				}
-			}
-			st.Finalize()
-		} else {
-			t.Errorf("SELECT * from foo limit 5; failed to return results %v", db.Error())
-		}
+		buffer := new(bytes.Buffer)
+		encoder := gob.NewEncoder(buffer)
+		fatalOnError(t, encoder.Encode(TwoItems{ "holy", "moly guacomole" }), "Encoding failed: buffer = %v", buffer)
+		t.Logf("Encoded data: %v", buffer.Bytes())
+
+		db.runQuery(t, "INSERT INTO bar values (?, ?)", 1, TwoItems{ "holy moly", "guacomole" })
+		db.stepThroughRows(t, BAR)
 	})
 }
+
+func TestTransfers(t *testing.T) {
+	TransientSession(func(source *Database) {
+		tables := []*Table{ FOO, BAR }
+		for _, table := range tables {
+			table.Drop(source)
+			table.Create(source)
+			if c, _ := table.Rows(source); c != 0 {
+				t.Fatalf("%v already contains data", table.Name)
+			}
+		}
+		source.runQuery(t, "INSERT INTO foo values (1, 'this is a test')")
+		source.runQuery(t, "INSERT INTO foo values (?, ?)", 2, "holy moly")
+		source.runQuery(t, "INSERT INTO bar values (?, ?)", 1, TwoItems{ "holy moly", "guacomole" })
+		source.stepThroughRows(t, FOO)
+		source.stepThroughRows(t, BAR)
+
+		Session("target.db", func(target *Database) {
+			t.Logf("Database opened: %v [flags: %v]", target.Filename, int(target.Flags))
+			tables := []*Table{ FOO, BAR }
+			for _, table := range tables {
+				table.Drop(target)
+				table.Create(target)
+			}
+			fatalOnError(t, target.Load(source, "main"), "loading from %v[%]", source.Filename, "main")
+			for _, table := range tables {
+				i, _ := table.Rows(target)
+				j, _ := table.Rows(source)
+				if i != j {
+					t.Fatalf("failed to load data for table %v", table.Name)
+				}
+			}
+
+			Session("backup.db", func(backup *Database) {
+				t.Logf("Database opened: %v [flags: %v]", backup.Filename, int(backup.Flags))
+				tables := []*Table{ FOO, BAR }
+				for _, table := range tables {
+					table.Drop(backup)
+					table.Create(backup)
+				}
+				fatalOnError(t, target.Save(backup, "main"), "saving to %v[%]", backup.Filename, "main")
+				for _, table := range tables {
+					i, _ := table.Rows(target)
+					j, _ := table.Rows(backup)
+					if i != j {
+						t.Fatalf("failed to load data for table %v", table.Name)
+					}
+				}
+			})
+		})
+	})
+}
+
+/*
+func TestBackup(t * testing.T) {
+	Session("test.db", func(db *Database) {
+	})
+}
+*/

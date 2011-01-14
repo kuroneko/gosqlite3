@@ -5,8 +5,11 @@ TARG=sqlite3
 CGOFILES=\
 	sqlite3.go\
 	database.go\
-	column.go\
-	statement.go
+	statement.go\
+	query_parameter.go\
+	result_column.go\
+	table.go\
+	backup.go
 
 ifeq ($(GOOS),darwin)
 CGO_LDFLAGS=/usr/lib/libsqlite3.0.dylib

@@ -6,14 +6,6 @@ import "fmt"
 import "os"
 import "time"
 
-const(
-	SQLITE_INTEGER = 1
-	SQLITE_FLOAT = 2
-	SQLITE3_TEXT = 3
-	SQLITE_BLOB = 4
-	SQLITE_NULL = 5
-)
-
 type Errno int
 
 func (e Errno) String() (err string) {
@@ -124,7 +116,9 @@ func (db *Database) Open(flags... int) (e os.Error) {
 	} else {
 		db.Flags = 0
 		for _, v := range flags { db.Flags = db.Flags | C.int(v) }
-		if e = Errno(C.sqlite3_open_v2(C.CString(db.Filename), &db.handle, db.Flags, nil)); e == OK && db.handle == nil {
+		if err := Errno(C.sqlite3_open_v2(C.CString(db.Filename), &db.handle, db.Flags, nil)); err != OK {
+			e = err
+		} else if db.handle == nil {
 			e = CANTOPEN
 		}
 	}
@@ -148,14 +142,83 @@ func (db *Database) TotalChanges() int {
 	return int(C.sqlite3_total_changes(db.handle))
 }
 
-func (db *Database) Error() (e string) {
-	return C.GoString(C.sqlite3_errmsg(db.handle))
+func (db *Database) Error() os.Error {
+	return Errno(C.sqlite3_errcode(db.handle))
 }
 
-func (db *Database) Prepare(sql string) (s *Statement, e os.Error) {
-	s = &Statement{ db: db, SQL: sql, timestamp: time.Nanoseconds() }
-	if e = Errno(C.sqlite3_prepare_v2(db.handle, C.CString(sql), -1, &s.cptr, nil)); e != OK {
-		s = nil
+func (db *Database) Prepare(sql string, f... func(*Statement)) (s *Statement, e os.Error) {
+	s = &Statement{ db: db, timestamp: time.Nanoseconds() }
+	if rv := Errno(C.sqlite3_prepare_v2(db.handle, C.CString(sql), -1, &s.cptr, nil)); rv != OK {
+		s, e = nil, rv
+	} else {
+		defer func() {
+			switch r := recover().(type) {
+			case nil:		e = nil
+			case os.Error:	s, e = nil, r
+			default:		s, e = nil, MISUSE
+			}
+		}()
+		for _, fn := range f { fn(s) }
+	}
+	return
+}
+
+func (db *Database) Execute(sql string, f func(*Statement, ...interface{})) (c int, e os.Error) {
+	var st	*Statement
+	st, e = db.Prepare(sql)
+	if e == nil {
+		c, e = st.All(f)
+	}
+	return
+}
+
+func (db *Database) Load(source *Database, dbname string) (e os.Error) {
+	if dbname == "" {
+		dbname = "main"
+	}
+	if backup, rv := NewBackup(db, dbname, source, dbname); rv == nil {
+		e = backup.Full()
+   	} else {
+		e = rv
+	}
+	return
+}
+
+func (db *Database) Save(target *Database, dbname string) (e os.Error) {
+	return target.Load(db, dbname)
+}
+
+type ProgressReport struct {
+	os.Error
+	PageCount		int
+	Remaining		int
+}
+
+type Reporter chan *ProgressReport
+
+func (db *Database) Backup(filename string, increment int, reporter Reporter) (e os.Error) {
+	if target, e := Open(filename); e == nil {
+		if backup, e := NewBackup(target, "main", db, "main"); e == nil {
+			// If the return value of backup_step() indicates that there are still further pages to copy, sleep for 250 ms before repeating.
+			go func() {
+				defer target.Close()
+				defer backup.Finish()
+				for {
+					report := &ProgressReport{
+								Error: backup.Step(increment),
+								PageCount: backup.PageCount(),
+								Remaining: backup.Remaining(),
+								}
+					reporter <- report
+					if e, ok := report.Error.(Errno); ok && !(e == OK || e == BUSY || e == LOCKED) {
+						break
+					}
+				}
+			}()
+		} else {
+			target.Close()
+			e = target.Error()
+		}
 	}
 	return
 }

@@ -14,7 +14,7 @@ func Shutdown()	{
 func Session(filename string, f func(db *Database)) {
 	Initialize()
 	defer Shutdown()
-	if db, e := Open(filename); e == OK {
+	if db, e := Open(filename); e == nil {
 		defer db.Close()
 		f(db)
 	}
@@ -23,7 +23,7 @@ func Session(filename string, f func(db *Database)) {
 func TransientSession(f func(db *Database)) {
 	Initialize()
 	defer Shutdown()
-	if db := TransientDatabase(); db.Open() == OK {
+	if db := TransientDatabase(); db.Open() == nil {
 		defer db.Close()
 		f(db)
 	}
