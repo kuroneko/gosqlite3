@@ -1,6 +1,7 @@
 package sqlite3
 
 import "testing"
+import "time"
 
 func (db *Database) createTestTables(t *testing.T, tables... *Table) {
 	for _, table := range tables {
@@ -63,27 +64,42 @@ func (r *Reporter) finished(t *testing.T) (finished bool) {
 	if report != nil {
 		switch e := report.Error.(type) {
 		case Errno:		if e != DONE { t.Fatalf("Backup error %v", e) }
-		case nil:		t.Logf("Backup still has %v pages of %v to copy to %v", report.Remaining, report.PageCount, report.Target)
+//		case nil:		t.Logf("Backup still has %v pages of %v to copy to %v", report.Remaining, report.PageCount, report.Target)
 		}
 	}
 	return closed(*r)
 }
 
 func TestBackup(t *testing.T) {
-	var callbacks	int
+	var messages	int
 
 	Session("test.db", func(db *Database) {
 		db.createTestTables(t, FOO, BAR)
 		db.createTestData(t, 1000)
 
 		if sync_reporter, e := db.Backup(BackupParameters{Target: "sync.db", PagesPerStep: 3, QueueLength: 1}); e == nil {
-			for callbacks = 0; !sync_reporter.finished(t); callbacks++ {}
-			t.Logf("backup of %v generated %v callbacks", db.Filename, callbacks)
+			d := time.Nanoseconds()
+			for messages = 0; !sync_reporter.finished(t); messages++ {}
+			t.Logf("backup of %v generated %v synchronous messages and took %vns", db.Filename, messages, time.Nanoseconds() - d)
+		}
+
+		if sync_reporter, e := db.Backup(BackupParameters{Target: "sync.db", PagesPerStep: 3, QueueLength: 1, Interval: 100000}); e == nil {
+			d := time.Nanoseconds()
+			for messages = 0; !sync_reporter.finished(t); messages++ {}
+			t.Logf("backup of %v generated %v synchronous messages and took %vns with interval %v", db.Filename, messages, time.Nanoseconds() - d, 100000)
 		}
 
 		if async_reporter, e := db.Backup(BackupParameters{Target: "async.db", PagesPerStep: 3, QueueLength: 8}); e == nil {
-			for callbacks = 0; !async_reporter.finished(t); callbacks++ {}
-			t.Logf("backup of %v generated %v callbacks", db.Filename, callbacks)
+			d := time.Nanoseconds()
+			for messages = 0; !async_reporter.finished(t); messages++ {}
+			t.Logf("backup of %v generated %v asynchronous messages and took %vns", db.Filename, messages, time.Nanoseconds() - d)
+		}
+
+
+		if async_reporter, e := db.Backup(BackupParameters{Target: "async.db", PagesPerStep: 3, QueueLength: 8}); e == nil {
+			d := time.Nanoseconds()
+			for messages = 0; !async_reporter.finished(t); messages++ {}
+			t.Logf("backup of %v generated %v asynchronous messages and took %vns with interval %v", db.Filename, messages, time.Nanoseconds() - d, 100000)
 		}
 	})
 }
