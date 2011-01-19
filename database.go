@@ -4,6 +4,7 @@ package sqlite3
 import "C"
 import "fmt"
 import "os"
+import "syscall"
 import "time"
 
 type Errno int
@@ -192,26 +193,41 @@ type ProgressReport struct {
 	os.Error
 	PageCount		int
 	Remaining		int
+	Source			string
+	Target			string
 }
 
 type Reporter chan *ProgressReport
 
-func (db *Database) Backup(filename string, increment int, reporter Reporter) (e os.Error) {
-	if target, e := Open(filename); e == nil {
-		if backup, e := NewBackup(target, "main", db, "main"); e == nil {
-			// If the return value of backup_step() indicates that there are still further pages to copy, sleep for 250 ms before repeating.
+type BackupParameters struct {
+	Target			string
+	PagesPerStep	int
+	QueueLength		int
+	Interval		int64
+}
+
+func (db *Database) Backup(p BackupParameters) (r Reporter, e os.Error) {
+	if target, e := Open(p.Target); e == nil {
+		if backup, e := NewBackup(target, "main", db, "main"); e == nil && p.PagesPerStep > 0 {
+			r = make(Reporter, p.QueueLength)
 			go func() {
 				defer target.Close()
 				defer backup.Finish()
+				defer close(r)
 				for {
 					report := &ProgressReport{
-								Error: backup.Step(increment),
+								Source: db.Filename,
+								Target: p.Target,
+								Error: backup.Step(p.PagesPerStep),
 								PageCount: backup.PageCount(),
 								Remaining: backup.Remaining(),
 								}
-					reporter <- report
+					r <- report
 					if e, ok := report.Error.(Errno); ok && !(e == OK || e == BUSY || e == LOCKED) {
 						break
+					}
+					if p.Interval > 0 {
+						syscall.Sleep(p.Interval)
 					}
 				}
 			}()
