@@ -147,19 +147,14 @@ func (db *Database) Error() os.Error {
 	return Errno(C.sqlite3_errcode(db.handle))
 }
 
-func (db *Database) Prepare(sql string, f... func(*Statement)) (s *Statement, e os.Error) {
+func (db *Database) Prepare(sql string, values... interface{}) (s *Statement, e os.Error) {
 	s = &Statement{ db: db, timestamp: time.Nanoseconds() }
 	if rv := Errno(C.sqlite3_prepare_v2(db.handle, C.CString(sql), -1, &s.cptr, nil)); rv != OK {
 		s, e = nil, rv
 	} else {
-		defer func() {
-			switch r := recover().(type) {
-			case nil:		e = nil
-			case os.Error:	s, e = nil, r
-			default:		s, e = nil, MISUSE
-			}
-		}()
-		for _, fn := range f { fn(s) }
+		if len(values) > 0 {
+			e, _ = s.BindAll(values...)
+		}
 	}
 	return
 }

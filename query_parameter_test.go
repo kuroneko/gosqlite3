@@ -9,10 +9,9 @@ func TestQueryParameterBinding(t *testing.T) {
 		}
 		BAR.Create(db)
 		sql := "INSERT INTO bar values (?, ?);"
-		st, e := db.Prepare(sql, func(s *Statement) {
-			fatalOnError(t, QueryParameter(1).Bind(s, nil), "unable to bind NULL to column 1")	
-		})
+		st, e := db.Prepare(sql)
 		fatalOnError(t, e, "unable to prepare query: %v", sql)
+		fatalOnError(t, QueryParameter(1).Bind(st, nil), "unable to bind NULL to column 1")
 
 		for _, v := range []interface{}{1.1, "hello", TwoItems{ "a", "b" }, []int{13, 27} } {
 			fatalOnError(t, QueryParameter(1).Bind(st, v), "erroneously bound %v to column 1", v)

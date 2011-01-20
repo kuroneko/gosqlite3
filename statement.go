@@ -49,6 +49,10 @@ func (s *Statement) Bind(start_column int, values... interface{}) (e os.Error, i
 	return
 }
 
+func (s *Statement) BindAll(values... interface{}) (e os.Error, index int) {
+	return s.Bind(0, values...)
+}
+
 func (s *Statement) SQLSource() (sql string) {
 	if s.cptr != nil {
 		sql = C.GoString(C.sqlite3_sql(s.cptr))
