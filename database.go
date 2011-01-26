@@ -159,11 +159,11 @@ func (db *Database) Prepare(sql string, values... interface{}) (s *Statement, e 
 	return
 }
 
-func (db *Database) Execute(sql string, f func(*Statement, ...interface{})) (c int, e os.Error) {
+func (db *Database) Execute(sql string, f... func(*Statement, ...interface{})) (c int, e os.Error) {
 	var st	*Statement
 	st, e = db.Prepare(sql)
 	if e == nil {
-		c, e = st.All(f)
+		c, e = st.All(f...)
 	}
 	return
 }

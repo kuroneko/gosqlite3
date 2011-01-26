@@ -53,7 +53,7 @@ func (db *Database) stepThroughRows(t *testing.T, table *Table) (c int) {
 func (db *Database) runQuery(t *testing.T, sql string, params... interface{}) {
 	st, e := db.Prepare(sql, params...)
 	fatalOnError(t, e, st.SQLSource())
-	st.Step(nil)
+	st.Step()
 	st.Finalize()
 }
 

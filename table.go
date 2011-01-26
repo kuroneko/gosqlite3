@@ -12,13 +12,13 @@ type Table struct {
 
 func (t *Table) Create(db *Database) (e os.Error) {
 	sql := fmt.Sprintf("CREATE TABLE %v (%v);", t.Name, t.ColumnSpec)
-	_, e = db.Execute(sql, nil)
+	_, e = db.Execute(sql)
 	return
 }
 
 func (t *Table) Drop(db *Database) (e os.Error) {
 	sql := fmt.Sprintf("DROP TABLE IF EXISTS %v;", t.Name, t.ColumnSpec)
-	_, e = db.Execute(sql, nil)
+	_, e = db.Execute(sql)
 	return
 }
 

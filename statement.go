@@ -67,7 +67,7 @@ func (s *Statement) Finalize() os.Error {
 	return nil
 }
 
-func (s *Statement) Step(f func(*Statement, ...interface{})) (e os.Error) {
+func (s *Statement) Step(f... func(*Statement, ...interface{})) (e os.Error) {
 	r := Errno(C.sqlite3_step(s.cptr))
 	switch r {
 	case DONE:
@@ -81,7 +81,10 @@ func (s *Statement) Step(f func(*Statement, ...interface{})) (e os.Error) {
 				default:		e = MISUSE
 				}
 			}()
-			f(s, s.Row()...)
+			r := s.Row()
+			for _, fn := range f {
+				fn(s, r...)
+			}
 		}
 	default:
 		e = r
@@ -89,9 +92,9 @@ func (s *Statement) Step(f func(*Statement, ...interface{})) (e os.Error) {
 	return
 }
 
-func (s *Statement) All(f func(*Statement, ...interface{})) (c int, e os.Error) {
+func (s *Statement) All(f... func(*Statement, ...interface{})) (c int, e os.Error) {
 	for {
-		if e = s.Step(f); e != nil {
+		if e = s.Step(f...); e != nil {
 			if r, ok := e.(Errno); ok {
 				switch r {
 				case ROW:
