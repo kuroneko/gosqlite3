@@ -9,7 +9,8 @@ CGOFILES=\
 	query_parameter.go\
 	result_column.go\
 	table.go\
-	backup.go
+	backup.go\
+	transaction.go
 
 ifeq ($(GOOS),darwin)
 CGO_LDFLAGS=/usr/lib/libsqlite3.0.dylib

@@ -165,6 +165,57 @@ func (db *Database) Execute(sql string, f... func(*Statement, ...interface{})) (
 	if e == nil {
 		c, e = st.All(f...)
 	}
+	if e == OK {
+		e = nil
+	}
+	return
+}
+
+func (db *Database) Begin() (e os.Error) {
+	_, e = db.Execute("BEGIN")
+	return
+}
+
+func (db *Database) Rollback() (e os.Error) {
+	_, e = db.Execute("ROLLBACK")
+	return
+}
+
+func (db *Database) Commit() (e os.Error) {
+	_, e = db.Execute("COMMIT")
+	return
+}
+
+
+func (db *Database) Transaction(f... func(*Database)) (e os.Error) {
+	/*	SQLite does not support nested transactions	*/
+	/*	Each processing function should raise a panic on an error */
+	defer func() {
+		switch r := recover().(type) {
+		case nil:
+			e = db.Commit()
+		case Errno:
+			if r == OK {
+				e = db.Commit()
+			} else {
+				if db.Rollback() != nil {
+					panic(e)
+				} else {
+					e = r
+				}
+			}
+		case os.Error:
+			e = r
+		default:
+			panic(r)
+		}
+	}()
+
+	if e = db.Begin(); e == nil {
+		for _, fn := range f {
+			fn(db)
+		}
+	}
 	return
 }
 

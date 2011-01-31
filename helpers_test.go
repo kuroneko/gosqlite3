@@ -29,6 +29,12 @@ func fatalOnError(t *testing.T, e os.Error, message string, parameters... interf
 	}
 }
 
+func fatalOnSuccess(t *testing.T, e os.Error, message string, parameters... interface{}) {
+	if e == nil {
+		t.Fatalf("%v : %v", e, fmt.Sprintf(message, parameters...))
+	}
+}
+
 func (db *Database) stepThroughRows(t *testing.T, table *Table) (c int) {
 	var e	os.Error
 	sql := fmt.Sprintf("SELECT * from %v;", table.Name)
