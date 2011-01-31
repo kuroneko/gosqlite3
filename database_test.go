@@ -27,19 +27,6 @@ func (db *Database) createTestData(t *testing.T, repeats int) {
 	db.runQuery(t, "PRAGMA synchronous=NORMAL")
 }
 
-func TestTransaction(t *testing.T) {
-	TransientSession(func(db *Database) {
-		db.createTestTables(t, FOO, BAR)
-		doNothing := func(d *Database) { }
-		raiseOK := func(d *Database) { panic(OK) }
-		raiseErrno := func(d *Database) { panic(MISUSE) }
-
-		fatalOnError(t, db.Transaction(doNothing), "empty transaction")
-		fatalOnError(t, db.Transaction(raiseOK), "transaction raises OK")
-		fatalOnSuccess(t, db.Transaction(raiseErrno), "transaction raises Errno")
-	})
-}
-
 func TestTransfers(t *testing.T) {
 	TransientSession(func(source *Database) {
 		source.createTestTables(t, FOO, BAR)

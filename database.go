@@ -186,39 +186,6 @@ func (db *Database) Commit() (e os.Error) {
 	return
 }
 
-
-func (db *Database) Transaction(f... func(*Database)) (e os.Error) {
-	/*	SQLite does not support nested transactions	*/
-	/*	Each processing function should raise a panic on an error */
-	defer func() {
-		switch r := recover().(type) {
-		case nil:
-			e = db.Commit()
-		case Errno:
-			if r == OK {
-				e = db.Commit()
-			} else {
-				if db.Rollback() != nil {
-					panic(e)
-				} else {
-					e = r
-				}
-			}
-		case os.Error:
-			e = r
-		default:
-			panic(r)
-		}
-	}()
-
-	if e = db.Begin(); e == nil {
-		for _, fn := range f {
-			fn(db)
-		}
-	}
-	return
-}
-
 func (db *Database) Load(source *Database, dbname string) (e os.Error) {
 	if dbname == "" {
 		dbname = "main"
