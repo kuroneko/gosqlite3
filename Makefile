@@ -10,7 +10,8 @@ CGOFILES=\
 	result_column.go\
 	table.go\
 	backup.go\
-	transaction.go
+	transaction.go\
+	progress.go
 
 ifeq ($(GOOS),darwin)
 CGO_LDFLAGS=/usr/lib/libsqlite3.0.dylib

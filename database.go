@@ -202,14 +202,6 @@ func (db *Database) Save(target *Database, dbname string) (e os.Error) {
 	return target.Load(db, dbname)
 }
 
-type ProgressReport struct {
-	os.Error
-	PageCount		int
-	Remaining		int
-	Source			string
-	Target			string
-}
-
 type Reporter chan *ProgressReport
 
 type BackupParameters struct {
@@ -232,7 +224,7 @@ func (db *Database) Backup(p BackupParameters) (r Reporter, e os.Error) {
 								Source: db.Filename,
 								Target: p.Target,
 								Error: backup.Step(p.PagesPerStep),
-								PageCount: backup.PageCount(),
+								Total: backup.PageCount(),
 								Remaining: backup.Remaining(),
 								}
 					r <- report
