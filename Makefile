@@ -10,7 +10,6 @@ CGOFILES=\
 	result_column.go\
 	table.go\
 	backup.go\
-	transaction.go\
 	progress.go
 
 ifeq ($(GOOS),darwin)

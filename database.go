@@ -4,6 +4,7 @@ package sqlite3
 import "C"
 import "fmt"
 import "os"
+import "strconv"
 import "syscall"
 import "time"
 
@@ -47,6 +48,7 @@ const(
 	ROW			= Errno(100)
 	DONE		= Errno(101)
 	ENCODER		= Errno(1000)
+	SAVEPOINT	= Errno(1001)
 )
 
 var errText = map[Errno]string {
@@ -79,12 +81,14 @@ var errText = map[Errno]string {
 	ROW:		"sqlite3_step() has another row ready",
 	DONE:		"sqlite3_step() has finished executing",
 	ENCODER:	"blob encoding failed",
+	SAVEPOINT:	"invalid or unknown savepoint identifier",
 }
 
 type Database struct {
 	handle		*C.sqlite3
 	Filename	string
 	Flags		C.int
+	Savepoints	[]interface{}
 }
 
 func TransientDatabase() (db *Database) {
@@ -183,6 +187,51 @@ func (db *Database) Rollback() (e os.Error) {
 
 func (db *Database) Commit() (e os.Error) {
 	_, e = db.Execute("COMMIT")
+	return
+}
+
+func savepointID(id interface{}) (s string) {
+	switch id := id.(type) {
+	case string:		s = id
+	case []byte:		s = string(id)
+	case fmt.Stringer:	s = id.String()
+	case int:			s = strconv.Itoa(id)
+	case uint:			s = strconv.Uitoa(id)
+	default:			panic(SAVEPOINT)
+	}
+	return
+}
+
+func (db *Database) Mark(id interface{}) (e os.Error) {
+	if st, err := db.Prepare("SAVEPOINT ?", savepointID(id)); err == nil {
+		_, e = st.All()
+	} else {
+		e = err
+	}
+	return
+}
+
+func (db *Database) MergeSteps(id interface{}) (e os.Error) {
+	if st, err := db.Prepare("RELEASE SAVEPOINT ?", savepointID(id)); err == nil {
+		_, e = st.All()
+	} else {
+		e = err
+	}
+	return
+}
+
+func (db *Database) Release(id interface{}) (e os.Error) {
+	if st, err := db.Prepare("ROLLBACK TRANSACTION TO SAVEPOINT ?", savepointID(id)); err == nil {
+		_, e = st.All()
+	} else {
+		e = err
+	}
+	return
+}
+
+func (db *Database) SavePoints() (s []interface{}) {
+	s = make([]interface{}, len(db.Savepoints))
+	copy(s, db.Savepoints)
 	return
 }
 
