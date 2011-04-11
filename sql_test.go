@@ -1,7 +1,7 @@
 package sql_test
 
 import "testing"
-import "sqlite3"
+import "github.com/kuroneko/sqlite3"
 
 func TestGeneral(t *testing.T) {
 	sqlite3.Initialize();

@@ -1,7 +1,7 @@
 package main
 
 import "fmt"
-import "sqlite3"
+import "github.com/kuroneko/sqlite3"
 
 func main() {
 	sqlite3.Initialize();

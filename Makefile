@@ -1,6 +1,6 @@
-include $(GOROOT)/src/Make.$(GOARCH)
+include $(GOROOT)/src/Make.inc
 
-TARG=sqlite3
+TARG=github.com/kuroneko/sqlite3
 
 CGOFILES=\
 	sqlite3.go
