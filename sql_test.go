@@ -1,33 +1,34 @@
-package sql_test
+package sqlite3
 
+import "bytes"
+import "gob"
 import "testing"
-import "github.com/kuroneko/sqlite3"
 
 func TestGeneral(t *testing.T) {
-	sqlite3.Initialize();
-	defer sqlite3.Shutdown();
-	t.Logf("Sqlite3 Version: %s\n", sqlite3.LibVersion());
+	Initialize()
+	defer Shutdown()
+	t.Logf("Sqlite3 Version: %v\n", LibVersion())
 
-	dbh := new(sqlite3.Handle);
-	err := dbh.Open("test.db");
-	if (err != "") {
-		t.Errorf("Open test.db: %s", err);
-	}
-	defer dbh.Close();
+	filename := ":memory:"
+	db, e := Open(filename)
+	fatalOnError(t, e, "opening %v", filename)
 
-	st,err := dbh.Prepare("CREATE TABLE foo (i INTEGER, s VARCHAR(20));");
-	if (err != "") {
-		t.Errorf("Create Table: %s", err);
-	} else {
-		defer st.Finalize();
-		st.Step();
-	}
+	defer db.Close()
+	t.Logf("Database opened: %v [flags: %v]", db.Filename, int(db.Flags))
+	t.Logf("Returning status: %v", e)
+}
 
-	st,err = dbh.Prepare("DROP TABLE foo;");
-	if (err != "") {
-		t.Errorf("Drop Table: %s", err);
-	} else {
-		defer st.Finalize();
-		st.Step();
-	}
+func TestBlob(t *testing.T) {
+	Session("test.db", func(db *Database) {
+		BAR.Drop(db)
+		BAR.Create(db)
+
+		buffer := new(bytes.Buffer)
+		encoder := gob.NewEncoder(buffer)
+		fatalOnError(t, encoder.Encode(TwoItems{ "holy", "moly guacomole" }), "Encoding failed: buffer = %v", buffer)
+		t.Logf("Encoded data: %v", buffer.Bytes())
+
+		db.runQuery(t, "INSERT INTO bar values (?, ?)", 1, TwoItems{ "holy moly", "guacomole" })
+		db.stepThroughRows(t, BAR)
+	})
 }
