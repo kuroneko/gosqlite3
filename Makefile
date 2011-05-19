@@ -13,9 +13,9 @@ CGOFILES=\
 	progress.go
 
 ifeq ($(GOOS),darwin)
-CGO_LDFLAGS=/usr/lib/libsqlite3.0.dylib
+#CGO_LDFLAGS=/usr/lib/libsqlite3.0.dylib
 else
-CGO_LDFLAGS=-lsqlite3
+#CGO_LDFLAGS=-lsqlite3
 endif
 
 include $(GOROOT)/src/Make.pkg
