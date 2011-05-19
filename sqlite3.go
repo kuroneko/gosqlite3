@@ -1,5 +1,6 @@
 package sqlite3
 
+// #cgo LDFLAGS: -lsqlite3
 // #include <sqlite3.h>
 import "C"
 
