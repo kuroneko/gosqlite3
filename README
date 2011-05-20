@@ -1,0 +1,29 @@
+== About ==
+
+GoSQLite3 provides both low-level and high-level wrappers for accessing the SQLite3 database from Go.
+It started as simple extension of the API defined by Russ Cox in his wrapper which has since been
+extended with a number of high-level conveniences.
+
+
+== Installation ==
+
+We support goinstall which can be invoked using the following command-line:
+
+	goinstall -dashboard=true github.com/kuroneko/gosqlite3
+
+
+== Usage ==
+
+Please read the tests for examples of how to perform queries and handle results.
+Documentation will follow in due course.
+
+
+== License ==
+
+TBD
+
+
+== Contributors ==
+
+Chris Collins
+Eleanor McHugh
