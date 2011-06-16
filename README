@@ -1,8 +1,8 @@
 == About ==
 
 GoSQLite3 provides both low-level and high-level wrappers for accessing the SQLite3 database from Go.
-It started as simple extension of the API defined by Russ Cox in his wrapper which has since been
-extended with a number of high-level conveniences.
+It started as simple wrapper around the sqlite C API which has since been extended with a number of 
+high-level conveniences.
 
 
 == Installation ==
