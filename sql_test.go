@@ -1,8 +1,10 @@
 package sqlite3
 
-import "bytes"
-import "gob"
-import "testing"
+import (
+	"bytes"
+	"encoding/gob"
+	"testing"
+)
 
 func TestGeneral(t *testing.T) {
 	Initialize()

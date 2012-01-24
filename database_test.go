@@ -78,28 +78,28 @@ func TestBackup(t *testing.T) {
 		db.createTestData(t, 1000)
 
 		if sync_reporter, e := db.Backup(BackupParameters{Target: "sync.db", PagesPerStep: 3, QueueLength: 1}); e == nil {
-			d := time.Nanoseconds()
+			d := time.Now().UnixNano()
 			for messages = 0; !sync_reporter.finished(t); messages++ {}
-			t.Logf("backup of %v generated %v synchronous messages and took %vns", db.Filename, messages, time.Nanoseconds() - d)
+			t.Logf("backup of %v generated %v synchronous messages and took %vns", db.Filename, messages, time.Now().UnixNano() - d)
 		}
 
 		if sync_reporter, e := db.Backup(BackupParameters{Target: "sync.db", PagesPerStep: 3, QueueLength: 1, Interval: 100000}); e == nil {
-			d := time.Nanoseconds()
+			d := time.Now().UnixNano()
 			for messages = 0; !sync_reporter.finished(t); messages++ {}
-			t.Logf("backup of %v generated %v synchronous messages and took %vns with interval %v", db.Filename, messages, time.Nanoseconds() - d, 100000)
+			t.Logf("backup of %v generated %v synchronous messages and took %vns with interval %v", db.Filename, messages, time.Now().UnixNano() - d, 100000)
 		}
 
 		if async_reporter, e := db.Backup(BackupParameters{Target: "async.db", PagesPerStep: 3, QueueLength: 8}); e == nil {
-			d := time.Nanoseconds()
+			d := time.Now().UnixNano()
 			for messages = 0; !async_reporter.finished(t); messages++ {}
-			t.Logf("backup of %v generated %v asynchronous messages and took %vns", db.Filename, messages, time.Nanoseconds() - d)
+			t.Logf("backup of %v generated %v asynchronous messages and took %vns", db.Filename, messages, time.Now().UnixNano() - d)
 		}
 
 
 		if async_reporter, e := db.Backup(BackupParameters{Target: "async.db", PagesPerStep: 3, QueueLength: 8}); e == nil {
-			d := time.Nanoseconds()
+			d := time.Now().UnixNano()
 			for messages = 0; !async_reporter.finished(t); messages++ {}
-			t.Logf("backup of %v generated %v asynchronous messages and took %vns with interval %v", db.Filename, messages, time.Nanoseconds() - d, 100000)
+			t.Logf("backup of %v generated %v asynchronous messages and took %vns with interval %v", db.Filename, messages, time.Now().UnixNano() - d, 100000)
 		}
 	})
 }

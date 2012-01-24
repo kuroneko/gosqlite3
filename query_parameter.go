@@ -8,21 +8,21 @@ package sqlite3
 //     return sqlite3_bind_blob(s, p, q, n, SQLITE_TRANSIENT);
 // }
 import "C"
-
-import "bytes"
-import "gob"
-import "os"
-import "unsafe"
+import (
+	"bytes"
+	"encoding/gob"
+	"unsafe"
+)
 
 type QueryParameter int
-func (p QueryParameter) bind_blob(s *Statement, v []byte) os.Error {
+func (p QueryParameter) bind_blob(s *Statement, v []byte) error {
 	if e := Errno(C.gosqlite3_bind_blob(s.cptr, C.int(p), unsafe.Pointer(C.CString(string(v))), C.int(len(v)))); e != OK {
 		return e
 	}
 	return nil
 }
 
-func (p QueryParameter) Bind(s *Statement, value interface{}) (e os.Error) {
+func (p QueryParameter) Bind(s *Statement, value interface{}) (e error) {
 	var rv	Errno
 	switch v := value.(type) {
 	case nil:

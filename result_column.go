@@ -2,10 +2,11 @@ package sqlite3
 
 // #include <sqlite3.h>
 import "C"
-
-import "bytes"
-import "gob"
-import "unsafe"
+import (
+	"bytes"
+	"encoding/gob"
+	"unsafe"
+)
 
 const(
 	INTEGER = 1

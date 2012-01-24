@@ -1,10 +1,10 @@
 package sqlite3
 
-import "fmt"
-import "gob"
-import "os"
-import "testing"
-
+import (
+	"fmt"
+	"encoding/gob"
+	"testing"
+)
 
 var FOO	*Table
 var BAR *Table
@@ -23,20 +23,20 @@ func (t *TwoItems) String() string {
 	return "[" + t.Number + " : " + t.Text + "]"
 }
 
-func fatalOnError(t *testing.T, e os.Error, message string, parameters... interface{}) {
+func fatalOnError(t *testing.T, e error, message string, parameters... interface{}) {
 	if e != nil {
 		t.Fatalf("%v : %v", e, fmt.Sprintf(message, parameters...))
 	}
 }
 
-func fatalOnSuccess(t *testing.T, e os.Error, message string, parameters... interface{}) {
+func fatalOnSuccess(t *testing.T, e error, message string, parameters... interface{}) {
 	if e == nil {
 		t.Fatalf("%v : %v", e, fmt.Sprintf(message, parameters...))
 	}
 }
 
 func (db *Database) stepThroughRows(t *testing.T, table *Table) (c int) {
-	var e	os.Error
+	var e	error
 	sql := fmt.Sprintf("SELECT * from %v;", table.Name)
 	c, e = db.Execute(sql, func(st *Statement, values ...interface{}) {
 		data := values[1]

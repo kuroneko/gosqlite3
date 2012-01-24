@@ -2,15 +2,15 @@ package sqlite3
 
 // #include <sqlite3.h>
 import "C"
-import "fmt"
-import "os"
-import "strconv"
-import "syscall"
-import "time"
+import (
+	"fmt"
+	"strconv"
+	"time"
+)
 
 type Errno int
 
-func (e Errno) String() (err string) {
+func (e Errno) Error() (err string) {
 	if err = errText[e]; err == "" {
 		err = fmt.Sprintf("errno %v", int(e))
 	}
@@ -95,7 +95,7 @@ func TransientDatabase() (db *Database) {
 	return &Database{ Filename: ":memory:" }	
 }
 
-func Open(filename string, flags... int) (db *Database, e os.Error) {
+func Open(filename string, flags... int) (db *Database, e error) {
 	defer func() {
 		if x := recover(); x != nil {
 			db.Close()
@@ -112,7 +112,7 @@ func Open(filename string, flags... int) (db *Database, e os.Error) {
 	return
 }
 
-func (db *Database) Open(flags... int) (e os.Error) {
+func (db *Database) Open(flags... int) (e error) {
 	if C.sqlite3_threadsafe() == 0 {
 		panic("sqlite library is not thread-safe")
 	}
@@ -147,12 +147,12 @@ func (db *Database) TotalChanges() int {
 	return int(C.sqlite3_total_changes(db.handle))
 }
 
-func (db *Database) Error() os.Error {
+func (db *Database) Error() error {
 	return Errno(C.sqlite3_errcode(db.handle))
 }
 
-func (db *Database) Prepare(sql string, values... interface{}) (s *Statement, e os.Error) {
-	s = &Statement{ db: db, timestamp: time.Nanoseconds() }
+func (db *Database) Prepare(sql string, values... interface{}) (s *Statement, e error) {
+	s = &Statement{ db: db, timestamp: time.Now().UnixNano() }
 	if rv := Errno(C.sqlite3_prepare_v2(db.handle, C.CString(sql), -1, &s.cptr, nil)); rv != OK {
 		s, e = nil, rv
 	} else {
@@ -163,7 +163,7 @@ func (db *Database) Prepare(sql string, values... interface{}) (s *Statement, e 
 	return
 }
 
-func (db *Database) Execute(sql string, f... func(*Statement, ...interface{})) (c int, e os.Error) {
+func (db *Database) Execute(sql string, f... func(*Statement, ...interface{})) (c int, e error) {
 	var st	*Statement
 	st, e = db.Prepare(sql)
 	if e == nil {
@@ -175,17 +175,17 @@ func (db *Database) Execute(sql string, f... func(*Statement, ...interface{})) (
 	return
 }
 
-func (db *Database) Begin() (e os.Error) {
+func (db *Database) Begin() (e error) {
 	_, e = db.Execute("BEGIN")
 	return
 }
 
-func (db *Database) Rollback() (e os.Error) {
+func (db *Database) Rollback() (e error) {
 	_, e = db.Execute("ROLLBACK")
 	return
 }
 
-func (db *Database) Commit() (e os.Error) {
+func (db *Database) Commit() (e error) {
 	_, e = db.Execute("COMMIT")
 	return
 }
@@ -196,13 +196,13 @@ func savepointID(id interface{}) (s string) {
 	case []byte:		s = string(id)
 	case fmt.Stringer:	s = id.String()
 	case int:			s = strconv.Itoa(id)
-	case uint:			s = strconv.Uitoa(id)
+	case uint:			s = strconv.FormatUint(uint64(id), 10)
 	default:			panic(SAVEPOINT)
 	}
 	return
 }
 
-func (db *Database) Mark(id interface{}) (e os.Error) {
+func (db *Database) Mark(id interface{}) (e error) {
 	if st, err := db.Prepare("SAVEPOINT ?", savepointID(id)); err == nil {
 		_, e = st.All()
 	} else {
@@ -211,7 +211,7 @@ func (db *Database) Mark(id interface{}) (e os.Error) {
 	return
 }
 
-func (db *Database) MergeSteps(id interface{}) (e os.Error) {
+func (db *Database) MergeSteps(id interface{}) (e error) {
 	if st, err := db.Prepare("RELEASE SAVEPOINT ?", savepointID(id)); err == nil {
 		_, e = st.All()
 	} else {
@@ -220,7 +220,7 @@ func (db *Database) MergeSteps(id interface{}) (e os.Error) {
 	return
 }
 
-func (db *Database) Release(id interface{}) (e os.Error) {
+func (db *Database) Release(id interface{}) (e error) {
 	if st, err := db.Prepare("ROLLBACK TRANSACTION TO SAVEPOINT ?", savepointID(id)); err == nil {
 		_, e = st.All()
 	} else {
@@ -235,7 +235,7 @@ func (db *Database) SavePoints() (s []interface{}) {
 	return
 }
 
-func (db *Database) Load(source *Database, dbname string) (e os.Error) {
+func (db *Database) Load(source *Database, dbname string) (e error) {
 	if dbname == "" {
 		dbname = "main"
 	}
@@ -247,7 +247,7 @@ func (db *Database) Load(source *Database, dbname string) (e os.Error) {
 	return
 }
 
-func (db *Database) Save(target *Database, dbname string) (e os.Error) {
+func (db *Database) Save(target *Database, dbname string) (e error) {
 	return target.Load(db, dbname)
 }
 
@@ -257,10 +257,10 @@ type BackupParameters struct {
 	Target			string
 	PagesPerStep	int
 	QueueLength		int
-	Interval		int64
+	Interval		time.Duration
 }
 
-func (db *Database) Backup(p BackupParameters) (r Reporter, e os.Error) {
+func (db *Database) Backup(p BackupParameters) (r Reporter, e error) {
 	if target, e := Open(p.Target); e == nil {
 		if backup, e := NewBackup(target, "main", db, "main"); e == nil && p.PagesPerStep > 0 {
 			r = make(Reporter, p.QueueLength)
@@ -281,7 +281,7 @@ func (db *Database) Backup(p BackupParameters) (r Reporter, e os.Error) {
 						break
 					}
 					if p.Interval > 0 {
-						syscall.Sleep(p.Interval)
+						time.Sleep(p.Interval)
 					}
 				}
 			}()
