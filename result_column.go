@@ -29,18 +29,24 @@ func (c ResultColumn) make_buffer(s *Statement, addr interface{}) (buffer string
 	return 
 }
 
+// Name returns the name assigned to a particular column in the result set of
+// a SELECT statement.
 func (c ResultColumn) Name(s *Statement) string {
 	return C.GoString(C.sqlite3_column_name(s.cptr, C.int(c)))
 }
 
+// Type returns the datatype code for the initial data type of the column.
 func (c ResultColumn) Type(s *Statement) int {
 	return int(C.sqlite3_column_type(s.cptr, C.int(c)))
 }
 
+// ByteCount returns the number of bytes of the BLOB or string without the 
+// zero terminators at the end of the string.
 func (c ResultColumn) ByteCount(s *Statement) int {
 	return int(C.sqlite3_column_bytes(s.cptr, C.int(c)))
 }
 
+// Value returns the value of the ResultColumn converted to a Go type.
 func (c ResultColumn) Value(s *Statement) (value interface{}) {
 	switch c.Type(s) {
 	case INTEGER:
