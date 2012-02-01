@@ -1,3 +1,4 @@
+// Package sqlite3 implements a Go interface to the SQLite database.
 package sqlite3
 
 // #cgo LDFLAGS: -lsqlite3

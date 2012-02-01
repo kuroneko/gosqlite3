@@ -17,6 +17,7 @@ const(
 )
 
 
+// ResultColumn implements the high level view of the SQLite result column.
 type ResultColumn int
 
 func (c ResultColumn) make_buffer(s *Statement, addr interface{}) (buffer string) {

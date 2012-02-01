@@ -5,7 +5,7 @@ import "C"
 
 // Backup implements the SQLite Online Backup API.
 //
-// The backup API copies the content of one database into another. It is 
+// The backup API copies the content of one database to another. It is 
 // useful either for creating backups of databases or for copying in-memory 
 // databases to or from persistent files.
 type Backup struct {

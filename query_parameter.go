@@ -25,7 +25,7 @@ func (p QueryParameter) bind_blob(s *Statement, v []byte) error {
 // Bind replaces the literals placed in the SQL statement with the actual 
 // values supplied to the function.
 //
-// The following templates may be replaced by the parameters:
+// The following templates may be replaced by the values:
 //   - ?
 //   - ?NNN
 //   - :VVV

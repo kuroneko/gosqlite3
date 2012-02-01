@@ -41,7 +41,7 @@ func (s *Statement) Column(column int) (value interface{}) {
 	return ResultColumn(column).Value(s)
 }
 
-// Row returns the all values of the row.
+// Row returns all values of the row.
 func (s *Statement) Row() (values []interface{}) {
 	for i := 0; i < s.Columns(); i++ {
 		values = append(values, s.Column(i))
@@ -86,7 +86,7 @@ func (s *Statement) Finalize() error {
 }
 
 // Step must be called one or more times to evaluate the statement after the 
-// prepared statement has been prepared using `Prepare`.
+// prepared statement has been prepared.
 func (s *Statement) Step(f... func(*Statement, ...interface{})) (e error) {
 	r := Errno(C.sqlite3_step(s.cptr))
 	switch r {

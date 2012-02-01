@@ -84,6 +84,7 @@ var errText = map[Errno]string{
 	SAVEPOINT:  "invalid or unknown savepoint identifier",
 }
 
+// Database implements high level view of the underlying database.
 type Database struct {
 	handle     *C.sqlite3
 	Filename   string
@@ -135,13 +136,13 @@ func (db *Database) Open(flags ...int) (e error) {
 	return
 }
 
-// Close shuts down the database engine for this database.
+// Close is used to close the database.
 func (db *Database) Close() {
 	C.sqlite3_close(db.handle)
 	db.handle = nil
 }
 
-// LastInsertRowID returns the id of the most recent successful INSERT.
+// LastInsertRowID returns the id of the most recently successful INSERT.
 //
 // Each entry in an SQLite table has a unique 64-bit signed integer key 
 // called the "rowid". The rowid is always available as an undeclared column 
@@ -149,7 +150,7 @@ func (db *Database) Close() {
 // explicitly declared columns. If the table has a column of type 
 // INTEGER PRIMARY KEY then that column is another alias for the rowid.
 //
-// This routine returns the rowid of the most recent successful INSERT into 
+// This routine returns the rowid of the most recently successful INSERT into 
 // the database from the database connection in the first argument. As of 
 // SQLite version 3.7.7, this routines records the last insert rowid of both 
 // ordinary tables and virtual tables. If no successful INSERTs have ever 
@@ -180,7 +181,7 @@ func (db *Database) TotalChanges() int {
 	return int(C.sqlite3_total_changes(db.handle))
 }
 
-// Error returns the numeric result code for the most recent failed database
+// Error returns the numeric result code for the most recently failed database
 // call.
 func (db *Database) Error() error {
 	return Errno(C.sqlite3_errcode(db.handle))
@@ -265,6 +266,16 @@ func (db *Database) Mark(id interface{}) (e error) {
 
 // MergeSteps can be seen as the equivalent of COMMIT for a Mark command.
 //
+func (db *Database) MergeSteps(id interface{}) (e error) {
+	if st, err := db.Prepare("RELEASE SAVEPOINT ?", savepointID(id)); err == nil {
+		_, e = st.All()
+	} else {
+		e = err
+	}
+	return
+}
+
+// Release rolls back all transactions to the specified SAVEPOINT (Mark).
 //   More specificly ...
 //   - Some people view RELEASE as the equivalent of COMMIT for a SAVEPOINT.
 //     This is an acceptable point of view as long as one remembers that the
@@ -280,16 +291,6 @@ func (db *Database) Mark(id interface{}) (e error) {
 //     ROLLBACK TO command rewinds the timeline back to a point just after 
 //     the named mark, and the RELEASE command erases marks from the timeline
 //     without actually making any changes to the database.
-func (db *Database) MergeSteps(id interface{}) (e error) {
-	if st, err := db.Prepare("RELEASE SAVEPOINT ?", savepointID(id)); err == nil {
-		_, e = st.All()
-	} else {
-		e = err
-	}
-	return
-}
-
-// Release rolls back all transactions to the specified SAVEPOINT (Mark).
 func (db *Database) Release(id interface{}) (e error) {
 	if st, err := db.Prepare("ROLLBACK TRANSACTION TO SAVEPOINT ?", savepointID(id)); err == nil {
 		_, e = st.All()
@@ -333,7 +334,7 @@ type BackupParameters struct {
 	Interval     time.Duration
 }
 
-// Backup creates a copy (backup) of the current database to the Target file 
+// Backup creates a copy (backup) of the current database to the target file 
 // specified in BackupParameters.
 func (db *Database) Backup(p BackupParameters) (r Reporter, e error) {
 	if target, e := Open(p.Target); e == nil {
