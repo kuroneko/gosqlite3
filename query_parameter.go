@@ -22,6 +22,17 @@ func (p QueryParameter) bind_blob(s *Statement, v []byte) error {
 	return nil
 }
 
+// Bind replaces the literals placed in the SQL statement with the actual 
+// values supplied to the function.
+//
+// The following templates may be replaced by the values:
+//   - ?
+//   - ?NNN
+//   - :VVV
+//   - @VVV
+//   - $VVV
+// In the templates above, NNN represents an integer literal, VVV represents
+// an alphanumeric identifier.
 func (p QueryParameter) Bind(s *Statement, value interface{}) (e error) {
 	var rv	Errno
 	switch v := value.(type) {
