@@ -19,7 +19,7 @@ type QueryParameter int
 func (p QueryParameter) bind_blob(s *Statement, v []byte) error {
 	cs := C.CString(string(v))
 	defer C.free(unsafe.Pointer(cs))
-	return SQLiteError(C.gosqlite3_bind_blob(s.cptr, C.int(p), unsafe.Pointer(&cs), C.int(len(v))))
+	return SQLiteError(C.gosqlite3_bind_blob(s.cptr, C.int(p), unsafe.Pointer(cs), C.int(len(v))))
 }
 
 // Bind replaces the literals placed in the SQL statement with the actual 
