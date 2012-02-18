@@ -103,3 +103,25 @@ func TestBackup(t *testing.T) {
 		}
 	})
 }
+
+func TestExecute(t *testing.T) {
+	t.Log("Test case for issue #11")
+	db := TransientDatabase()
+	// OPEN_FULLMUTEX, OPEN_READWRITE, OPEN_CREATE
+	if e := db.Open(0x10000, 0x02, 0x04); e != nil {
+		t.Logf("Open failed: %v", e)
+	}
+	defer db.Close()
+	if _, e := db.Execute("CREATE TABLE t(id INTEGER PRIMARY KEY ASC, unique_int INTEGER UNIQUE);"); e != nil {
+		t.Logf("Create table failed: %v", e)
+	}
+	if _, e := db.Execute("INSERT INTO t ( unique_int ) VALUES ( 1 );"); e != nil {
+		t.Logf("1. Insert failed: %v", e)
+	}
+	if _, e := db.Execute("INSERT INTO t ( unique_int ) VALUES ( 2 );"); e != nil {
+		t.Logf("2. Insert failed: %v", e)
+	}
+	if _, e := db.Execute("INSERT INTO t ( unique_int ) VALUES ( 2 );"); e == nil {
+		t.Logf("3. Insert succeeded: %v", e)
+	}
+}

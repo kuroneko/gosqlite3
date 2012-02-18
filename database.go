@@ -84,6 +84,13 @@ var errText = map[Errno]string{
 	SAVEPOINT:  "invalid or unknown savepoint identifier",
 }
 
+func SQLiteError(code C.int) (e error) {
+	if e = Errno(code); e == OK {
+		e = nil
+	}
+	return
+}
+
 // Database implements high level view of the underlying database.
 type Database struct {
 	handle     *C.sqlite3
@@ -127,9 +134,15 @@ func (db *Database) Open(flags ...int) (e error) {
 		for _, v := range flags {
 			db.Flags = db.Flags | C.int(v)
 		}
-		if err := Errno(C.sqlite3_open_v2(C.CString(db.Filename), &db.handle, db.Flags, nil)); err != OK {
-			e = err
-		} else if db.handle == nil {
+
+		e = SQLiteError(C.sqlite3_open_v2(C.CString(db.Filename), &db.handle, db.Flags, nil))
+
+//		if err :; err != OK {
+//			e = err
+//		} else if db.handle == nil {
+//			e = CANTOPEN
+//		}
+		if e == nil && db.handle == nil {
 			e = CANTOPEN
 		}
 	}
@@ -191,8 +204,8 @@ func (db *Database) Error() error {
 // supplied values.
 func (db *Database) Prepare(sql string, values ...interface{}) (s *Statement, e error) {
 	s = &Statement{db: db, timestamp: time.Now().UnixNano()}
-	if rv := Errno(C.sqlite3_prepare_v2(db.handle, C.CString(sql), -1, &s.cptr, nil)); rv != OK {
-		s, e = nil, rv
+	if e = SQLiteError(C.sqlite3_prepare_v2(db.handle, C.CString(sql), -1, &s.cptr, nil)); e != nil {
+		s = nil
 	} else {
 		if len(values) > 0 {
 			e, _ = s.BindAll(values...)
@@ -204,12 +217,8 @@ func (db *Database) Prepare(sql string, values ...interface{}) (s *Statement, e 
 // Execute runs the SQL statement. 
 func (db *Database) Execute(sql string, f ...func(*Statement, ...interface{})) (c int, e error) {
 	var st *Statement
-	st, e = db.Prepare(sql)
-	if e == nil {
+	if st, e = db.Prepare(sql); e == nil {
 		c, e = st.All(f...)
-	}
-	if e == OK {
-		e = nil
 	}
 	return
 }
@@ -353,7 +362,7 @@ func (db *Database) Backup(p BackupParameters) (r Reporter, e error) {
 						Remaining: backup.Remaining(),
 					}
 					r <- report
-					if e, ok := report.Error.(Errno); ok && !(e == OK || e == BUSY || e == LOCKED) {
+					if e := report.Error; !(e == nil || e == BUSY || e == LOCKED) {
 						break
 					}
 					if p.Interval > 0 {

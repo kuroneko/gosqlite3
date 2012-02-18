@@ -78,36 +78,21 @@ func (s *Statement) SQLSource() (sql string) {
 }
 
 // Finalize is used to delete a prepared statement in the SQLite engine.
-func (s *Statement) Finalize() error {
-	if e := Errno(C.sqlite3_finalize(s.cptr)); e != OK {
-		return e
-	}
-	return nil
+func (s *Statement) Finalize() (e error) {
+	return SQLiteError(C.sqlite3_finalize(s.cptr))
 }
 
 // Step must be called one or more times to evaluate the statement after the 
 // prepared statement has been prepared.
 func (s *Statement) Step(f... func(*Statement, ...interface{})) (e error) {
-	r := Errno(C.sqlite3_step(s.cptr))
-	switch r {
-	case DONE:
-		e = nil
+	switch e = SQLiteError(C.sqlite3_step(s.cptr)); e {
 	case ROW:
-		if f != nil {
-			defer func() {
-				switch x := recover().(type) {
-				case nil:		e = ROW
-				case error:		e = x
-				default:		e = MISUSE
-				}
-			}()
-			r := s.Row()
-			for _, fn := range f {
-				fn(s, r...)
-			}
+		row := s.Row()
+		for _, fn := range f {
+			fn(s, row...)
 		}
-	default:
-		e = r
+	case DONE:
+		e = s.Reset()
 	}
 	return
 }
@@ -115,25 +100,10 @@ func (s *Statement) Step(f... func(*Statement, ...interface{})) (e error) {
 // All can be used to return all rows of a prepared statement after the 
 // statement has been prepared.
 func (s *Statement) All(f... func(*Statement, ...interface{})) (c int, e error) {
-	for {
-		if e = s.Step(f...); e != nil {
-			if r, ok := e.(Errno); ok {
-				switch r {
-				case ROW:
-					c++
-					continue
-				default:
-					e = r
-					break
-				}
-			}
-		} else {
-			break
-		}
+	for e = s.Step(f...); e == ROW; e = s.Step(f...) {
+		c++
 	}
-	if e == nil {
-		s.Finalize()
-	}
+	e = s.Finalize()
 	return
 }
 
@@ -143,16 +113,10 @@ func (s *Statement) All(f... func(*Statement, ...interface{})) (c int, e error) 
 // Any SQL statement variables that had values bound to them retain 
 // their values. Use `ClearBindings` to reset the bindings.
 func (s *Statement) Reset() error {
-	if e := Errno(C.sqlite3_reset(s.cptr)); e != OK {
-		return e
-	}
-	return nil
+	return SQLiteError(C.sqlite3_reset(s.cptr))
 }
 
 // ClearBindings is used to reset all parameters to NULL.
 func (s *Statement) ClearBindings() error {
-	if e := Errno(C.sqlite3_clear_bindings(s.cptr)); e != OK {
-		return e
-	}
-	return nil
+	return SQLiteError(C.sqlite3_clear_bindings(s.cptr))
 }
