@@ -141,11 +141,6 @@ func (db *Database) Open(flags ...int) (e error) {
 		defer C.free(unsafe.Pointer(cs))
 		e = SQLiteError(C.sqlite3_open_v2(cs, &db.handle, db.Flags, nil))
 
-//		if err :; err != OK {
-//			e = err
-//		} else if db.handle == nil {
-//			e = CANTOPEN
-//		}
 		if e == nil && db.handle == nil {
 			e = CANTOPEN
 		}
@@ -201,7 +196,7 @@ func (db *Database) TotalChanges() int {
 // Error returns the numeric result code for the most recently failed database
 // call.
 func (db *Database) Error() error {
-	return Errno(C.sqlite3_errcode(db.handle))
+	return SQLiteError(C.sqlite3_errcode(db.handle))
 }
 
 // Prepare compiles the SQL query into a byte-code program and binds the 

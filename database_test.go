@@ -62,9 +62,9 @@ func TestTransfers(t *testing.T) {
 func (r *Reporter) finished(t *testing.T) bool {
 	report, ok := <- (*r)
 	if report != nil {
-		switch e := report.Error.(type) {
-		case Errno:		if e != DONE { t.Fatalf("Backup error %v", e) }
-//		case nil:		t.Logf("Backup still has %v pages of %v to copy to %v", report.Remaining, report.PageCount, report.Target)
+		switch e := report.Error; {
+		case e == nil:		t.Logf("Backup still has %v pages of %v to copy to %v", report.Remaining, report.Total, report.Target)
+		case e != DONE:		t.Fatalf("Backup error %v", e)
 		}
 	}
 	return !ok

@@ -20,16 +20,15 @@ type Backup struct {
 
 // NewBackup initializes and returns the handle to a backup.
 func NewBackup(d *Database, ddb string, s *Database, sdb string) (b *Backup, e error) {
-	dcs := C.CString(ddb)
-	defer C.free(unsafe.Pointer(dcs))
-	scs := C.CString(sdb)
-	defer C.free(unsafe.Pointer(scs))
-	if cptr := C.sqlite3_backup_init(d.handle, dcs, s.handle, scs); cptr != nil {
+	dname := C.CString(ddb)
+	defer C.free(unsafe.Pointer(dname))
+	sname := C.CString(sdb)
+	defer C.free(unsafe.Pointer(sname))
+
+	if cptr := C.sqlite3_backup_init(d.handle, dname, s.handle, sname); cptr != nil {
 		b = &Backup{cptr: cptr, db: d}
 	} else {
-		if e = d.Error(); e == OK {
-			e = nil
-		}
+		e = d.Error()
 	}
 	return
 }
@@ -37,10 +36,7 @@ func NewBackup(d *Database, ddb string, s *Database, sdb string) (b *Backup, e e
 // Step will copy up to `pages` between the source and destination database.
 // If `pages` is negative, all remaining source pages are copied.
 func (b *Backup) Step(pages int) error {
-	if e := Errno(C.sqlite3_backup_step(b.cptr, C.int(pages))); e != OK {
-		return e
-	}
-	return nil
+	return SQLiteError(C.sqlite3_backup_step(b.cptr, C.int(pages)))
 }
 
 // Remaining returns the number of pages still to be backed up.
@@ -56,18 +52,12 @@ func (b *Backup) PageCount() int {
 // Finish should be called when the backup is done, an error occured or when 
 // the application wants to abandon the backup operation.
 func (b *Backup) Finish() error {
-	if e := Errno(C.sqlite3_backup_finish(b.cptr)); e != OK {
-		return e
-	}
-	return nil
+	return SQLiteError(C.sqlite3_backup_finish(b.cptr))
 }
 
 // Full creates a full backup of the database.
 func (b *Backup) Full() error {
 	b.Step(-1)
 	b.Finish()
-	if e := b.db.Error(); e != OK {
-		return e
-	}
-	return nil
+	return b.db.Error()
 }
