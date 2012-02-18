@@ -1,7 +1,12 @@
 package sqlite3
 
 // #include <sqlite3.h>
+// #include <stdlib.h>
 import "C"
+
+import (
+	"unsafe"
+)
 
 // Backup implements the SQLite Online Backup API.
 //
@@ -15,7 +20,11 @@ type Backup struct {
 
 // NewBackup initializes and returns the handle to a backup.
 func NewBackup(d *Database, ddb string, s *Database, sdb string) (b *Backup, e error) {
-	if cptr := C.sqlite3_backup_init(d.handle, C.CString(ddb), s.handle, C.CString(sdb)); cptr != nil {
+	dcs := C.CString(ddb)
+	defer C.free(unsafe.Pointer(dcs))
+	scs := C.CString(sdb)
+	defer C.free(unsafe.Pointer(scs))
+	if cptr := C.sqlite3_backup_init(d.handle, dcs, s.handle, scs); cptr != nil {
 		b = &Backup{cptr: cptr, db: d}
 	} else {
 		if e = d.Error(); e == OK {

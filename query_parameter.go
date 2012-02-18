@@ -1,6 +1,7 @@
 package sqlite3
 
 // #include <sqlite3.h>
+// #include <stdlib.h>
 // int gosqlite3_bind_text(sqlite3_stmt* s, int p, const char* q, int n) {
 //     return sqlite3_bind_text(s, p, q, n, SQLITE_TRANSIENT);
 // }
@@ -16,7 +17,9 @@ import (
 
 type QueryParameter int
 func (p QueryParameter) bind_blob(s *Statement, v []byte) error {
-	return SQLiteError(C.gosqlite3_bind_blob(s.cptr, C.int(p), unsafe.Pointer(C.CString(string(v))), C.int(len(v))))
+	cs := C.CString(string(v))
+	defer C.free(unsafe.Pointer(cs))
+	return SQLiteError(C.gosqlite3_bind_blob(s.cptr, C.int(p), unsafe.Pointer(&cs), C.int(len(v))))
 }
 
 // Bind replaces the literals placed in the SQL statement with the actual 
@@ -51,7 +54,9 @@ func (p QueryParameter) Bind(s *Statement, value interface{}) (e error) {
 			e = ENCODER
 		} else {
 			rawbuffer := string(buffer.Bytes())
-			e = SQLiteError(C.gosqlite3_bind_blob(s.cptr, C.int(p), unsafe.Pointer(C.CString(rawbuffer)), C.int(len(rawbuffer))))
+			cs := C.CString(rawbuffer)
+			defer C.free(unsafe.Pointer(cs))
+			e = SQLiteError(C.gosqlite3_bind_blob(s.cptr, C.int(p), unsafe.Pointer(&cs), C.int(len(rawbuffer))))
 		}
 	}
 	return

@@ -1,11 +1,13 @@
 package sqlite3
 
 // #include <sqlite3.h>
+// #include <stdlib.h>
 import "C"
 import (
 	"fmt"
 	"strconv"
 	"time"
+	"unsafe"
 )
 
 type Errno int
@@ -135,7 +137,9 @@ func (db *Database) Open(flags ...int) (e error) {
 			db.Flags = db.Flags | C.int(v)
 		}
 
-		e = SQLiteError(C.sqlite3_open_v2(C.CString(db.Filename), &db.handle, db.Flags, nil))
+		cs := C.CString(db.Filename)
+		defer C.free(unsafe.Pointer(cs))
+		e = SQLiteError(C.sqlite3_open_v2(cs, &db.handle, db.Flags, nil))
 
 //		if err :; err != OK {
 //			e = err
@@ -204,7 +208,9 @@ func (db *Database) Error() error {
 // supplied values.
 func (db *Database) Prepare(sql string, values ...interface{}) (s *Statement, e error) {
 	s = &Statement{db: db, timestamp: time.Now().UnixNano()}
-	if e = SQLiteError(C.sqlite3_prepare_v2(db.handle, C.CString(sql), -1, &s.cptr, nil)); e != nil {
+	cs := C.CString(sql)
+	defer C.free(unsafe.Pointer(cs))
+	if e = SQLiteError(C.sqlite3_prepare_v2(db.handle, cs, -1, &s.cptr, nil)); e != nil {
 		s = nil
 	} else {
 		if len(values) > 0 {
