@@ -1,7 +1,9 @@
 package sqlite3
 
-import "testing"
-import "time"
+import (
+	"testing"
+	"time"
+)
 
 func (db *Database) createTestTables(t *testing.T, tables... *Table) {
 	for _, table := range tables {
@@ -32,7 +34,7 @@ func TestTransfers(t *testing.T) {
 		source.createTestTables(t, FOO, BAR)
 		source.createTestData(t, 1000)
 		Session("target.db", func(target *Database) {
-			t.Logf("Database opened: %v [flags: %v]", target.Filename, int(target.Flags))
+			t.Logf("Database opened: %v [flags: %v]", target.Filename, target.DBFlag)
 			target.createTestTables(t, FOO, BAR)
 			fatalOnError(t, target.Load(source, "main"), "loading from %v[%]", source.Filename, "main")
 			for _, table := range []*Table{ FOO, BAR } {
@@ -44,7 +46,7 @@ func TestTransfers(t *testing.T) {
 			}
 
 			Session("backup.db", func(backup *Database) {
-				t.Logf("Database opened: %v [flags: %v]", backup.Filename, int(backup.Flags))
+				t.Logf("Database opened: %v [flags: %v]", backup.Filename, backup.DBFlag)
 				backup.createTestTables(t, FOO, BAR)
 				fatalOnError(t, target.Save(backup, "main"), "saving to %v[%v]", backup.Filename, "main")
 				for _, table := range []*Table{ FOO, BAR } {
@@ -107,8 +109,7 @@ func TestBackup(t *testing.T) {
 func TestExecute(t *testing.T) {
 	t.Log("Test case for issue #11")
 	db := TransientDatabase()
-	// OPEN_FULLMUTEX, OPEN_READWRITE, OPEN_CREATE
-	if e := db.Open(0x10000, 0x02, 0x04); e != nil {
+	if e := db.Open(O_FULLMUTEX, O_READWRITE, O_CREATE); e != nil {
 		t.Logf("Open failed: %v", e)
 	}
 	defer db.Close()

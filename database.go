@@ -6,98 +6,73 @@ import "C"
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 	"unsafe"
 )
 
-type Errno int
 
-func (e Errno) Error() (err string) {
-	if err = errText[e]; err == "" {
-		err = fmt.Sprintf("errno %v", int(e))
+type DBFlag	int
+
+func (d DBFlag) String() string {
+	flags := []string{}
+	for i := O_READONLY; i < d; i <<= 1 {
+		if s, ok := flagText[d & i]; ok {
+			flags = append(flags, s)
+		}
 	}
-	return
+	return strings.Join(flags, "|")
 }
 
 const (
-	OK = Errno(iota)
-	ERROR
-	INTERNAL
-	PERM
-	ABORT
-	BUSY
-	LOCKED
-	NOMEM
-	READONLY
-	INTERRUPT
-	IOERR
-	CORRUPT
-	NOTFOUND
-	FULL
-	CANTOPEN
-	PROTOCOL
-	EMPTY
-	SCHEMA
-	TOOBIG
-	CONSTRAINT
-	MISMATCH
-	MISUSE
-	NOLFS
-	AUTH
-	FORMAT
-	RANGE
-	NOTDB
-	ROW       = Errno(100)
-	DONE      = Errno(101)
-	ENCODER   = Errno(1000)
-	SAVEPOINT = Errno(1001)
+	O_READONLY DBFlag =			0x00000001
+	O_READWRITE DBFlag =		0x00000002
+	O_CREATE DBFlag =			0x00000004
+	O_DELETEONCLOSE DBFlag =	0x00000008
+	O_EXCLUSIVE DBFlag =		0x00000010
+	O_AUTOPROXY DBFlag =		0x00000020
+	O_URI DBFlag =				0x00000040
+	O_MAIN_DB DBFlag =			0x00000100
+	O_TEMP_DB DBFlag =			0x00000200
+	O_TRANSIENT_DB DBFlag =		0x00000400
+	O_MAIN_JOURNAL DBFlag =		0x00000800
+	O_TEMP_JOURNAL DBFlag =		0x00001000
+	O_SUBJOURNAL DBFlag =		0x00002000
+	O_MASTER_JOURNAL DBFlag =	0x00004000
+	O_NOMUTEX DBFlag =			0x00008000
+	O_FULLMUTEX DBFlag =		0x00010000
+	O_SHAREDCACHE DBFlag =		0x00020000
+	O_PRIVATECACHE DBFlag =		0x00040000
+	O_WAL DBFlag =				0x00080000
 )
 
-var errText = map[Errno]string{
-	ERROR:      "SQL error or missing database",
-	INTERNAL:   "Internal logic error in SQLite",
-	PERM:       "Access permission denied",
-	ABORT:      "Callback routine requested an abort",
-	BUSY:       "The database file is locked",
-	LOCKED:     "A table in the database is locked",
-	NOMEM:      "A malloc() failed",
-	READONLY:   "Attempt to write a readonly database",
-	INTERRUPT:  "Operation terminated by sqlite3_interrupt()",
-	IOERR:      "Some kind of disk I/O error occurred",
-	CORRUPT:    "The database disk image is malformed",
-	NOTFOUND:   "NOT USED. Table or record not found",
-	FULL:       "Insertion failed because database is full",
-	CANTOPEN:   "Unable to open the database file",
-	PROTOCOL:   "NOT USED. Database lock protocol error",
-	EMPTY:      "Database is empty",
-	SCHEMA:     "The database schema changed",
-	TOOBIG:     "String or BLOB exceeds size limit",
-	CONSTRAINT: "Abort due to constraint violation",
-	MISMATCH:   "Data type mismatch",
-	MISUSE:     "Library used incorrectly",
-	NOLFS:      "Uses OS features not supported on host",
-	AUTH:       "Authorization denied",
-	FORMAT:     "Auxiliary database format error",
-	RANGE:      "2nd parameter to sqlite3_bind out of range",
-	NOTDB:      "File opened that is not a database file",
-	ROW:        "sqlite3_step() has another row ready",
-	DONE:       "sqlite3_step() has finished executing",
-	ENCODER:    "blob encoding failed",
-	SAVEPOINT:  "invalid or unknown savepoint identifier",
-}
-
-func SQLiteError(code C.int) (e error) {
-	if e = Errno(code); e == OK {
-		e = nil
-	}
-	return
+var flagText = map[DBFlag]string{
+	O_READONLY:			"O_READONLY",
+	O_READWRITE:		"O_READWRITE",
+	O_CREATE:			"O_CREATE",
+	O_DELETEONCLOSE:	"O_DELETEONCLOSE",
+	O_EXCLUSIVE:		"O_EXCLUSIVE",
+	O_AUTOPROXY:		"O_AUTOPROXY",
+	O_URI:				"O_URI",
+	O_MAIN_DB:			"O_MAIN_DB",
+	O_TEMP_DB:			"O_TEMP_DB",
+	O_TRANSIENT_DB:		"O_TRANSIENT_DB",
+	O_MAIN_JOURNAL:		"O_MAIN_JOURNAL",
+	O_TEMP_JOURNAL:		"O_TEMP_JOURNAL",
+	O_SUBJOURNAL:		"O_SUBJOURNAL",
+	O_MASTER_JOURNAL:	"O_MASTER_JOURNAL",
+	O_NOMUTEX:			"O_NOMUTEX",
+	O_FULLMUTEX:		"O_FULLMUTEX",
+	O_SHAREDCACHE:		"O_SHAREDCACHE",
+	O_PRIVATECACHE:		"O_PRIVATECACHE",
+	O_WAL:				"O_WAL",
 }
 
 // Database implements high level view of the underlying database.
 type Database struct {
 	handle     *C.sqlite3
 	Filename   string
-	Flags      C.int
+	DBFlag
 	Savepoints []interface{}
 }
 
@@ -107,7 +82,7 @@ func TransientDatabase() (db *Database) {
 }
 
 // Open returns a handle to the sqlite3 database specified by filename.
-func Open(filename string, flags ...int) (db *Database, e error) {
+func Open(filename string, flags ...DBFlag) (db *Database, e error) {
 	defer func() {
 		if x := recover(); x != nil {
 			db.Close()
@@ -117,7 +92,7 @@ func Open(filename string, flags ...int) (db *Database, e error) {
 	}()
 	db = &Database{Filename: filename}
 	if len(flags) == 0 {
-		e = db.Open(C.SQLITE_OPEN_FULLMUTEX, C.SQLITE_OPEN_READWRITE, C.SQLITE_OPEN_CREATE)
+		e = db.Open(O_FULLMUTEX, O_READWRITE, O_CREATE)
 	} else {
 		e = db.Open(flags...)
 	}
@@ -125,21 +100,21 @@ func Open(filename string, flags ...int) (db *Database, e error) {
 }
 
 // Open initializes and opens the database.
-func (db *Database) Open(flags ...int) (e error) {
+func (db *Database) Open(flags ...DBFlag) (e error) {
 	if C.sqlite3_threadsafe() == 0 {
 		panic("sqlite library is not thread-safe")
 	}
 	if db.handle != nil {
 		e = CANTOPEN
 	} else {
-		db.Flags = 0
+		db.DBFlag = 0
 		for _, v := range flags {
-			db.Flags = db.Flags | C.int(v)
+			db.DBFlag |= v
 		}
 
 		cs := C.CString(db.Filename)
 		defer C.free(unsafe.Pointer(cs))
-		e = SQLiteError(C.sqlite3_open_v2(cs, &db.handle, db.Flags, nil))
+		e = SQLiteError(C.sqlite3_open_v2(cs, &db.handle, C.int(db.DBFlag), nil))
 
 		if e == nil && db.handle == nil {
 			e = CANTOPEN

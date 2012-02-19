@@ -16,7 +16,7 @@ func TestGeneral(t *testing.T) {
 	fatalOnError(t, e, "opening %v", filename)
 
 	defer db.Close()
-	t.Logf("Database opened: %v [flags: %v]", db.Filename, int(db.Flags))
+	t.Logf("Database opened: %v [flags: %v]", db.Filename, db.DBFlag)
 	t.Logf("Returning status: %v", e)
 }
 

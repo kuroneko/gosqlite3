@@ -3,6 +3,7 @@ include $(GOROOT)/src/Make.inc
 TARG=github.com/kuroneko/sqlite3
 
 CGOFILES=\
+	errors.go\
 	sqlite3.go\
 	database.go\
 	statement.go\
