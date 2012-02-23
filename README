@@ -7,9 +7,9 @@ high-level conveniences.
 
 == Installation ==
 
-We support goinstall which can be invoked using the following command-line:
+We support installation via the go tool which can be invoked using the following command-line:
 
-	goinstall -dashboard=true github.com/kuroneko/gosqlite3
+	go install github.com/kuroneko/gosqlite3
 
 
 == Usage ==
