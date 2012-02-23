@@ -35,7 +35,7 @@ func fatalOnSuccess(t *testing.T, e error, message string, parameters... interfa
 	}
 }
 
-func (db *Database) stepThroughRows(t *testing.T, table *Table) (c int) {
+func (db *Database) stepThroughRows(t *testing.T, table *Table, verbose... bool) (c int) {
 	var e	error
 	sql := fmt.Sprintf("SELECT * from %v;", table.Name)
 	c, e = db.Execute(sql, func(st *Statement, values ...interface{}) {
@@ -44,9 +44,13 @@ func (db *Database) stepThroughRows(t *testing.T, table *Table) (c int) {
 		case *gob.Decoder:
 			blob := &TwoItems{}
 			data.Decode(blob)
-			t.Logf("BLOB =>   %v: %v, %v: %v\n", ResultColumn(0).Name(st), ResultColumn(0).Value(st), st.ColumnName(1), blob)
+			if len(verbose) > 0 && verbose[0] {
+				t.Logf("BLOB =>   %v: %v, %v: %v\n", ResultColumn(0).Name(st), ResultColumn(0).Value(st), st.ColumnName(1), blob)
+			}
 		default:
-			t.Logf("TEXT => %v: %v, %v: %v\n", ResultColumn(0).Name(st), ResultColumn(0).Value(st), st.ColumnName(1), st.Column(1))
+			if len(verbose) > 0 && verbose[0] {
+				t.Logf("TEXT => %v: %v, %v: %v\n", ResultColumn(0).Name(st), ResultColumn(0).Value(st), st.ColumnName(1), st.Column(1))
+			}
 		}
 	})
 	fatalOnError(t, e, "%v failed on step %v", sql, c)

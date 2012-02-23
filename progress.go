@@ -9,4 +9,5 @@ type ProgressReport struct {
 	Remaining		int
 	Source			string
 	Target			string
+	Verbose			bool
 }

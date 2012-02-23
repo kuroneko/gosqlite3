@@ -2,6 +2,9 @@ package sqlite3
 
 // #include <sqlite3.h>
 // #include <stdlib.h>
+// int gosqlite3_prepare_v2(sqlite3* db, const char* zSql, int nByte, sqlite3_stmt **ppStmt) {
+//     return sqlite3_prepare_v2(db, zSql, nByte, ppStmt, NULL);
+// }
 import "C"
 import (
 	"fmt"
@@ -180,7 +183,7 @@ func (db *Database) Prepare(sql string, values ...interface{}) (s *Statement, e 
 	s = &Statement{db: db, timestamp: time.Now().UnixNano()}
 	cs := C.CString(sql)
 	defer C.free(unsafe.Pointer(cs))
-	if e = SQLiteError(C.sqlite3_prepare_v2(db.handle, cs, -1, &s.cptr, nil)); e != nil {
+	if e = SQLiteError(C.gosqlite3_prepare_v2(db.handle, cs, -1, &s.cptr)); e != nil {
 		s = nil
 	} else {
 		if len(values) > 0 {
@@ -313,10 +316,11 @@ func (db *Database) Save(target *Database, dbname string) (e error) {
 type Reporter chan *ProgressReport
 
 type BackupParameters struct {
-	Target       string
-	PagesPerStep int
-	QueueLength  int
-	Interval     time.Duration
+	Target			string
+	PagesPerStep	int
+	QueueLength		int
+	Interval		time.Duration
+	Verbose			bool
 }
 
 // Backup creates a copy (backup) of the current database to the target file 
@@ -331,11 +335,12 @@ func (db *Database) Backup(p BackupParameters) (r Reporter, e error) {
 				defer close(r)
 				for {
 					report := &ProgressReport{
-						Source:    db.Filename,
-						Target:    p.Target,
-						Error:     backup.Step(p.PagesPerStep),
-						Total:     backup.PageCount(),
-						Remaining: backup.Remaining(),
+						Source:		db.Filename,
+						Target:		p.Target,
+						Error:		backup.Step(p.PagesPerStep),
+						Total:		backup.PageCount(),
+						Remaining:	backup.Remaining(),
+						Verbose:	p.Verbose,
 					}
 					r <- report
 					if e := report.Error; !(e == nil || e == BUSY || e == LOCKED) {

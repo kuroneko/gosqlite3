@@ -65,8 +65,12 @@ func (r *Reporter) finished(t *testing.T) bool {
 	report, ok := <- (*r)
 	if report != nil {
 		switch e := report.Error; {
-		case e == nil:		t.Logf("Backup still has %v pages of %v to copy to %v", report.Remaining, report.Total, report.Target)
-		case e != DONE:		t.Fatalf("Backup error %v", e)
+		case e == nil:
+			if report.Verbose {
+				t.Logf("Backup still has %v pages of %v to copy to %v", report.Remaining, report.Total, report.Target)
+			}
+		case e != DONE:
+			t.Fatalf("Backup error %v", e)
 		}
 	}
 	return !ok
@@ -79,30 +83,51 @@ func TestBackup(t *testing.T) {
 		db.createTestTables(t, FOO, BAR)
 		db.createTestData(t, 1000)
 
-		if sync_reporter, e := db.Backup(BackupParameters{Target: "sync.db", PagesPerStep: 3, QueueLength: 1}); e == nil {
-			d := time.Now().UnixNano()
-			for messages = 0; !sync_reporter.finished(t); messages++ {}
-			t.Logf("backup of %v generated %v synchronous messages and took %vns", db.Filename, messages, time.Now().UnixNano() - d)
+		TestSyncReporter := func(pages int, interval time.Duration) {
+			if reporter, e := db.Backup(BackupParameters{Target: "sync.db", PagesPerStep: pages, QueueLength: 1, Interval: interval, Verbose: false}); e == nil {
+				d := time.Now().UnixNano()
+				for messages = 0; !reporter.finished(t); messages++ {}
+				if interval == 0 {
+					t.Logf("backup of %v generated %v synchronous messages and took %vns", db.Filename, messages, time.Now().UnixNano() - d)
+				} else {
+					t.Logf("backup of %v generated %v synchronous messages and took %vns with interval %v", db.Filename, messages, time.Now().UnixNano() - d, interval)
+				}
+			}
 		}
 
-		if sync_reporter, e := db.Backup(BackupParameters{Target: "sync.db", PagesPerStep: 3, QueueLength: 1, Interval: 100000}); e == nil {
-			d := time.Now().UnixNano()
-			for messages = 0; !sync_reporter.finished(t); messages++ {}
-			t.Logf("backup of %v generated %v synchronous messages and took %vns with interval %v", db.Filename, messages, time.Now().UnixNano() - d, 100000)
-		}
+		TestSyncReporter(3, 0)
+		TestSyncReporter(3, 100000)
 
-		if async_reporter, e := db.Backup(BackupParameters{Target: "async.db", PagesPerStep: 3, QueueLength: 8}); e == nil {
-			d := time.Now().UnixNano()
-			for messages = 0; !async_reporter.finished(t); messages++ {}
-			t.Logf("backup of %v generated %v asynchronous messages and took %vns", db.Filename, messages, time.Now().UnixNano() - d)
-		}
+		TestSyncReporter(10, 0)
+		TestSyncReporter(10, 100000)
 
 
-		if async_reporter, e := db.Backup(BackupParameters{Target: "async.db", PagesPerStep: 3, QueueLength: 8}); e == nil {
-			d := time.Now().UnixNano()
-			for messages = 0; !async_reporter.finished(t); messages++ {}
-			t.Logf("backup of %v generated %v asynchronous messages and took %vns with interval %v", db.Filename, messages, time.Now().UnixNano() - d, 100000)
+		TestASyncReporter := func(queuelength, pages int, interval time.Duration) {
+			if reporter, e := db.Backup(BackupParameters{Target: "sync.db", PagesPerStep: pages, QueueLength: 1, Interval: interval, Verbose: false}); e == nil {
+				d := time.Now().UnixNano()
+				for messages = 0; !reporter.finished(t); messages++ {}
+				if interval == 0 {
+					t.Logf("backup of %v generated %v synchronous messages and took %vns", db.Filename, messages, time.Now().UnixNano() - d)
+				} else {
+					t.Logf("backup of %v generated %v synchronous messages and took %vns with interval %v", db.Filename, messages, time.Now().UnixNano() - d, interval)
+				}
+			}
 		}
+
+		TestASyncReporter(1, 3, 0)
+		TestASyncReporter(1, 10, 0)
+		TestASyncReporter(1, 3, 100000)
+		TestASyncReporter(1, 10, 100000)
+
+		TestASyncReporter(8, 3, 0)
+		TestASyncReporter(8, 10, 0)
+		TestASyncReporter(8, 3, 100000)
+		TestASyncReporter(8, 10, 100000)
+
+		TestASyncReporter(12, 3, 0)
+		TestASyncReporter(12, 10, 0)
+		TestASyncReporter(12, 3, 100000)
+		TestASyncReporter(12, 10, 100000)
 	})
 }
 
