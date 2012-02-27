@@ -9,7 +9,7 @@ high-level conveniences.
 
 We support installation via the go tool which can be invoked using the following command-line:
 
-	go install github.com/kuroneko/gosqlite3
+	go get github.com/kuroneko/gosqlite3
 
 
 == Usage ==
